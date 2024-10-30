@@ -127,3 +127,4 @@ C:\Users\davtian\Documents\RoomReservationSystem\RoomReservationSystem\obj\Debug
 C:\Users\davtian\Documents\RoomReservationSystem\RoomReservationSystem\obj\Debug\net8.0\RoomReservationSystem.pdb
 C:\Users\davtian\Documents\RoomReservationSystem\RoomReservationSystem\obj\Debug\net8.0\RoomReservationSystem.genruntimeconfig.cache
 C:\Users\davtian\Documents\RoomReservationSystem\RoomReservationSystem\obj\Debug\net8.0\ref\RoomReservationSystem.dll
+C:\Users\davtian\Documents\RoomReservationSystem\RoomReservationSystem\obj\Debug\net8.0\RoomReservationSystem.sourcelink.json

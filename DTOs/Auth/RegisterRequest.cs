@@ -1,3 +1,4 @@
+//DTOs/Auth/RegisterRequest.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomReservationSystem.DTOs.Auth

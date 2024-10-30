@@ -1,3 +1,4 @@
+//DTOs/Auth/RegisterResponse.cs
 namespace RoomReservationSystem.DTOs.Auth
 {
     public class RegisterResponse
