@@ -10,22 +10,23 @@ namespace RoomReservationSystem.Data
         {
         }
 
-        // DbSets for your entities
+        // Existing DbSets
         public DbSet<User> Users { get; set; }
         public DbSet<Room> Rooms { get; set; }
 
-        // Configure entity relationships and constraints
+        // Add the Bookings DbSet
+        public DbSet<Booking> Bookings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Define the schema if necessary, e.g., "ADMIN"
             string schema = "ADMIN"; // Replace with your actual schema name
 
             // Configure User entity
             modelBuilder.Entity<User>(entity =>
             {
-                entity.ToTable("USERS", schema); // Ensure table name and schema are correct
+                entity.ToTable("USERS", schema);
 
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.Email).IsUnique();
@@ -44,7 +45,7 @@ namespace RoomReservationSystem.Data
 
                 entity.Property(e => e.PasswordHash)
                       .IsRequired()
-                      .HasMaxLength(64); // SHA256 hash length
+                      .HasMaxLength(64);
 
                 entity.Property(e => e.Role)
                       .IsRequired()
@@ -60,7 +61,7 @@ namespace RoomReservationSystem.Data
             // Configure Room entity
             modelBuilder.Entity<Room>(entity =>
             {
-                entity.ToTable("ROOMS", schema); // Ensure table name and schema are correct
+                entity.ToTable("ROOMS", schema);
 
                 entity.HasKey(e => e.Id);
 
@@ -70,8 +71,31 @@ namespace RoomReservationSystem.Data
 
                 entity.Property(e => e.Capacity)
                       .IsRequired();
+            });
 
-                // Add other property configurations as needed
+            // Configure Booking entity
+            modelBuilder.Entity<Booking>(entity =>
+            {
+                entity.ToTable("BOOKINGS", schema);
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.StartDate)
+                      .IsRequired();
+
+                entity.Property(e => e.EndDate)
+                      .IsRequired();
+
+                // Configure relationships
+                entity.HasOne(e => e.Room)
+                      .WithMany()
+                      .HasForeignKey(e => e.RoomId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }
