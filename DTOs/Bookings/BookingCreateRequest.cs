@@ -1,3 +1,4 @@
+// DTOs/Bookings/BookingCreateRequest.cs
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -14,6 +15,6 @@ namespace RoomReservationSystem.DTOs.Bookings
         [Required]
         public DateTime EndDate { get; set; }
 
-        // Additional fields like Preferences can be added here
+        // Optional: Add additional properties as needed
     }
 }

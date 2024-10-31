@@ -1,4 +1,4 @@
-//DTOs/Auth/RegisterRequest.cs
+// DTOs/Auth/RegisterRequest.cs (Optional Update)
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomReservationSystem.DTOs.Auth
@@ -15,12 +15,14 @@ namespace RoomReservationSystem.DTOs.Auth
 
         [Required]
         [EmailAddress]
+        [MaxLength(100)]
         public string Email { get; set; } = string.Empty;
 
         [Required]
         [MinLength(6)]
         public string Password { get; set; } = string.Empty;
 
-        // Additional fields like PhoneNumber, Address can be added here
+        // Optional: Add Address information
+        // public AddressCreateRequest Address { get; set; } = null!;
     }
 }

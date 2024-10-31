@@ -1,4 +1,4 @@
-// DTOs/Rooms/RoomResponse.cs
+// DTOs/Rooms/RoomResponse.cs (Updated)
 namespace RoomReservationSystem.DTOs.Rooms
 {
     public class RoomResponse
@@ -6,7 +6,10 @@ namespace RoomReservationSystem.DTOs.Rooms
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public int Capacity { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public int BuildingId { get; set; }
 
-        // Additional properties like Price, Type can be added here
+        // Optional: Include building details if needed
+        // public BuildingResponse Building { get; set; } = null!;
     }
 }

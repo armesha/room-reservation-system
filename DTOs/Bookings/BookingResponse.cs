@@ -1,5 +1,4 @@
-using System;
-
+// DTOs/Bookings/BookingResponse.cs (Optional Update)
 namespace RoomReservationSystem.DTOs.Bookings
 {
     public class BookingResponse
@@ -10,6 +9,8 @@ namespace RoomReservationSystem.DTOs.Bookings
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
-        // Additional properties like Status, TotalPrice can be added here
+        // Optional: Include related room and user details
+        // public RoomResponse Room { get; set; } = null!;
+        // public UserResponse User { get; set; } = null!;
     }
 }

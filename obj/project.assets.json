@@ -3440,24 +3440,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\davtian\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\C\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\davtian\\Downloads\\test_project\\room-reservation-system\\RoomReservationSystem.csproj",
+      "projectUniqueName": "C:\\Users\\C\\Source\\Repos\\room-reservation-system\\RoomReservationSystem.csproj",
       "projectName": "RoomReservationSystem",
-      "projectPath": "C:\\Users\\davtian\\Downloads\\test_project\\room-reservation-system\\RoomReservationSystem.csproj",
-      "packagesPath": "C:\\Users\\davtian\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\davtian\\Downloads\\test_project\\room-reservation-system\\obj\\",
+      "projectPath": "C:\\Users\\C\\Source\\Repos\\room-reservation-system\\RoomReservationSystem.csproj",
+      "packagesPath": "C:\\Users\\C\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\C\\Source\\Repos\\room-reservation-system\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\davtian\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Users\\C\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -3465,6 +3460,7 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -3534,7 +3530,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.401/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.403/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
