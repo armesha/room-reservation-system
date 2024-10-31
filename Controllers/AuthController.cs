@@ -1,4 +1,3 @@
-//Controllers/AuthController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoomReservationSystem.Data;
@@ -27,7 +26,9 @@ namespace RoomReservationSystem.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+            // Use CountAsync instead of AnyAsync to avoid Oracle boolean literals
+            var userCount = await _context.Users.CountAsync(u => u.Email == request.Email);
+            if (userCount > 0)
             {
                 return BadRequest(new { message = "Email is already registered." });
             }
@@ -41,7 +42,8 @@ namespace RoomReservationSystem.Controllers
                 LastName = request.LastName,
                 Email = request.Email,
                 PasswordHash = passwordHash,
-                Role = "User" // Default role
+                Role = "User", // Default role
+                IsActive = "Y"  // Set as active by default
             };
 
             _context.Users.Add(user);
@@ -54,7 +56,8 @@ namespace RoomReservationSystem.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
+            var user = await _context.Users
+                                     .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive == "Y");
             if (user == null)
             {
                 return Unauthorized(new { message = "Invalid credentials." });
