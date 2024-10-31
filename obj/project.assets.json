@@ -3446,11 +3446,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\davtian\\Documents\\RoomReservationSystem\\RoomReservationSystem\\RoomReservationSystem.csproj",
+      "projectUniqueName": "C:\\Users\\davtian\\Downloads\\test_project\\room-reservation-system\\RoomReservationSystem.csproj",
       "projectName": "RoomReservationSystem",
-      "projectPath": "C:\\Users\\davtian\\Documents\\RoomReservationSystem\\RoomReservationSystem\\RoomReservationSystem.csproj",
+      "projectPath": "C:\\Users\\davtian\\Downloads\\test_project\\room-reservation-system\\RoomReservationSystem.csproj",
       "packagesPath": "C:\\Users\\davtian\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\davtian\\Documents\\RoomReservationSystem\\RoomReservationSystem\\obj\\",
+      "outputPath": "C:\\Users\\davtian\\Downloads\\test_project\\room-reservation-system\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

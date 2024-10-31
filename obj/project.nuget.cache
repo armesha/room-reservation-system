@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "X6oryD+g82E=",
+  "dgSpecHash": "iJax0+FexIA=",
   "success": true,
-  "projectFilePath": "C:\\Users\\davtian\\Documents\\RoomReservationSystem\\RoomReservationSystem\\RoomReservationSystem.csproj",
+  "projectFilePath": "C:\\Users\\davtian\\Downloads\\test_project\\room-reservation-system\\RoomReservationSystem.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\davtian\\.nuget\\packages\\automapper\\12.0.1\\automapper.12.0.1.nupkg.sha512",
     "C:\\Users\\davtian\\.nuget\\packages\\automapper.extensions.microsoft.dependencyinjection\\12.0.1\\automapper.extensions.microsoft.dependencyinjection.12.0.1.nupkg.sha512",
