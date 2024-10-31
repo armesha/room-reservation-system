@@ -3,12 +3,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
 # Copy project file and restore dependencies
-COPY *.csproj ./
+COPY RoomReservationSystem.csproj ./
 RUN dotnet restore
 
 # Copy remaining files and build the application
 COPY . ./
-RUN dotnet publish -c Release -o out
+RUN dotnet publish RoomReservationSystem.csproj -c Release -o out
 
 # Use a lightweight runtime image for deployment
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
