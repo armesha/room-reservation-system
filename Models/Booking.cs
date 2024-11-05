@@ -5,24 +5,18 @@ namespace RoomReservationSystem.Models
 {
     public class Booking
     {
-        public int Id { get; set; }
+        public Booking()
+        {
+            Status = "Pending";
+        }
 
-        [Required]
-        public int RoomId { get; set; }
-
-        [Required]
+        public int BookingId { get; set; }
         public int UserId { get; set; }
+        public int RoomId { get; set; }
+        public DateTime BookingDate { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
 
-        [Required]
-        public DateTime StartDate { get; set; }
-
-        [Required]
-        public DateTime EndDate { get; set; }
-
-        // Additional properties like Status, TotalPrice can be added here
-
-        // Navigation properties
-        public Room Room { get; set; }
-        public User User { get; set; }
+        public string Status { get; set; }
     }
 }

@@ -1,4 +1,3 @@
-// Models/Address.cs
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -37,7 +36,6 @@ namespace RoomReservationSystem.Models
         [Required]
         public int BuildingId { get; set; }
 
-        // Navigation property
         [ForeignKey("BuildingId")]
         public Building Building { get; set; } = null!;
     }

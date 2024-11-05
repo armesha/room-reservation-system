@@ -1,30 +1,13 @@
-// Models/Room.cs
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RoomReservationSystem.Models
 {
     public class Room
     {
-        [Key]
-        public int Id { get; set; }
-
-        [Required]
-        [MaxLength(255)]
-        public string Name { get; set; } = string.Empty;
-
-        [Required]
-        public int Capacity { get; set; }
-
-        [Required]
-        [MaxLength(1000)]
-        public string Description { get; set; } = string.Empty;
-
-        [Required]
+        public int RoomId { get; set; }
         public int BuildingId { get; set; }
-
-        // Navigation property
-        [ForeignKey("BuildingId")]
-        public Building Building { get; set; } = null!;
+        public string RoomNumber { get; set; }
+        public int Capacity { get; set; }
+        public bool HasProjector { get; set; }
+        public bool HasWhiteboard { get; set; }
     }
 }
