@@ -1,21 +1,17 @@
-//Program.cs
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RoomReservationSystem.Data;
 using RoomReservationSystem.Services;
-using RoomReservationSystem.Models; // Ensure this using is present
+using RoomReservationSystem.Models; 
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
-// Configure Oracle DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseOracle(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configure JWT Settings
 var jwtSettingsSection = builder.Configuration.GetSection("JwtSettings");
 builder.Services.Configure<JwtSettings>(jwtSettingsSection);
 
@@ -23,7 +19,6 @@ var jwtSettings = jwtSettingsSection.Get<JwtSettings>();
 var secretKey = jwtSettings.Secret;
 var key = Encoding.ASCII.GetBytes(secretKey);
 
-// Configure Authentication with JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -31,7 +26,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // Set to true in production
+    options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -45,18 +40,15 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Register TokenService
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddControllers();
 
-// Add Swagger for API documentation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 
 app.UseSwagger();
 app.UseSwaggerUI();

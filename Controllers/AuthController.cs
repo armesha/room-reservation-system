@@ -1,98 +1,53 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RoomReservationSystem.Data;
-using RoomReservationSystem.DTOs.Auth;
-using RoomReservationSystem.Models;
+using RoomReservationSystem.Models.Auth;
 using RoomReservationSystem.Services;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace RoomReservationSystem.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly ITokenService _tokenService;
+        private readonly IUserService _userService;
 
-        public AuthController(ApplicationDbContext context, ITokenService tokenService)
+        public AuthController(IUserService userService)
         {
-            _context = context;
-            _tokenService = tokenService;
+            _userService = userService;
         }
 
-        // POST: api/auth/register
+        // POST: /api/auth/register
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        public IActionResult Register([FromBody] RegisterRequest request)
         {
-            // Use CountAsync instead of AnyAsync to avoid Oracle boolean literals
-            var userCount = await _context.Users.CountAsync(u => u.Email == request.Email);
-            if (userCount > 0)
-            {
-                return BadRequest(new { message = "Email is already registered." });
-            }
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            // Hash the password
-            var passwordHash = ComputeSha256Hash(request.Password);
+            var response = _userService.Register(request);
+            if (response.Success)
+                return Ok(new { message = response.Message });
 
-            var user = new User
-            {
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                PasswordHash = passwordHash,
-                Role = "User", // Default role
-                IsActive = "Y"  // Set as active by default
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return Ok(new RegisterResponse { Message = "User registered successfully." });
+            return BadRequest(new { message = response.Message });
         }
 
-        // POST: api/auth/login
+        // POST: /api/auth/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        public IActionResult Login([FromBody] LoginRequest request)
         {
-            var user = await _context.Users
-                                     .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive == "Y");
-            if (user == null)
-            {
-                return Unauthorized(new { message = "Invalid credentials." });
-            }
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            var passwordHash = ComputeSha256Hash(request.Password);
-            if (user.PasswordHash != passwordHash)
-            {
+            var response = _userService.Authenticate(request);
+            if (response == null)
                 return Unauthorized(new { message = "Invalid credentials." });
-            }
 
-            var token = _tokenService.GenerateToken(user);
-            return Ok(new LoginResponse
-            {
-                Token = token,
-                Role = user.Role
-            });
+            return Ok(response);
         }
 
-        // Utility method to compute SHA256 hash
-        private string ComputeSha256Hash(string rawData)
+        // POST: /api/auth/logout
+        [HttpPost("logout")]
+        public IActionResult Logout()
         {
-            using (SHA256 sha256Hash = SHA256.Create())
-            {
-                // ComputeHash returns byte array
-                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
-
-                // Convert byte array to a string
-                StringBuilder builder = new StringBuilder();
-                foreach (var t in bytes)
-                {
-                    builder.Append(t.ToString("x2"));
-                }
-                return builder.ToString();
-            }
+            return Ok(new { message = "Logout successful." });
         }
     }
 }

@@ -1,72 +1,82 @@
-//Controllers/RoomsController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RoomReservationSystem.Data;
-using RoomReservationSystem.DTOs.Rooms;
 using RoomReservationSystem.Models;
+using RoomReservationSystem.Repositories;
+using System.Collections.Generic;
 
 namespace RoomReservationSystem.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class RoomsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IRoomRepository _roomRepository;
 
-        public RoomsController(ApplicationDbContext context)
+        public RoomsController(IRoomRepository roomRepository)
         {
-            _context = context;
+            _roomRepository = roomRepository;
         }
 
-        // POST: api/rooms
-        [HttpPost]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateRoom([FromBody] RoomCreateRequest request)
+        // GET: /api/rooms
+        [HttpGet]
+        [Authorize(Roles = "Administrator,Registered User,Unauthenticated User")]
+        public ActionResult<IEnumerable<Room>> GetAllRooms()
         {
-            var room = new Room
-            {
-                Name = request.Name,
-                Capacity = request.Capacity
-                // Initialize additional properties if necessary
-            };
-
-            _context.Rooms.Add(room);
-            await _context.SaveChangesAsync();
-
-            var response = new RoomResponse
-            {
-                Id = room.Id,
-                Name = room.Name,
-                Capacity = room.Capacity
-                // Map additional properties if necessary
-            };
-
-            return CreatedAtAction(nameof(GetRoomById), new { id = room.Id }, response);
+            var rooms = _roomRepository.GetAllRooms();
+            return Ok(rooms);
         }
 
-        // GET: api/rooms/{id}
+        // GET: /api/rooms/{id}
         [HttpGet("{id}")]
-        [Authorize] // Accessible by authenticated users
-        public async Task<IActionResult> GetRoomById(int id)
+        [Authorize(Roles = "Administrator,Registered User,Unauthenticated User")]
+        public ActionResult<Room> GetRoomById(int id)
         {
-            var room = await _context.Rooms.FindAsync(id);
+            var room = _roomRepository.GetRoomById(id);
             if (room == null)
-            {
-                return NotFound();
-            }
+                return NotFound(new { message = "Room not found." });
 
-            var response = new RoomResponse
-            {
-                Id = room.Id,
-                Name = room.Name,
-                Capacity = room.Capacity
-                // Map additional properties if necessary
-            };
-
-            return Ok(response);
+            return Ok(room);
         }
 
-        // Additional CRUD endpoints can be implemented here
+        // POST: /api/rooms
+        [HttpPost]
+        [Authorize(Roles = "Administrator")]
+        public IActionResult AddRoom([FromBody] Room room)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            _roomRepository.AddRoom(room);
+            return CreatedAtAction(nameof(GetRoomById), new { id = room.RoomId }, room);
+        }
+
+        // PUT: /api/rooms/{id}
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Administrator")]
+        public IActionResult UpdateRoom(int id, [FromBody] Room room)
+        {
+            if (id != room.RoomId)
+                return BadRequest(new { message = "ID mismatch." });
+
+            var existingRoom = _roomRepository.GetRoomById(id);
+            if (existingRoom == null)
+                return NotFound(new { message = "Room not found." });
+
+            _roomRepository.UpdateRoom(room);
+            return NoContent();
+        }
+
+        // DELETE: /api/rooms/{id}
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Administrator")]
+        public IActionResult DeleteRoom(int id)
+        {
+            var existingRoom = _roomRepository.GetRoomById(id);
+            if (existingRoom == null)
+                return NotFound(new { message = "Room not found." });
+
+            _roomRepository.DeleteRoom(id);
+            return NoContent();
+        }
     }
 }

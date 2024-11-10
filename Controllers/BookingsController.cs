@@ -1,248 +1,147 @@
-// Controllers/BookingsController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RoomReservationSystem.Data;
-using RoomReservationSystem.DTOs.Bookings;
 using RoomReservationSystem.Models;
-using System;
-using System.Linq;
+using RoomReservationSystem.Services;
 using System.Security.Claims;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace RoomReservationSystem.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Route("api/[controller]")]
     public class BookingsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IBookingService _bookingService;
 
-        public BookingsController(ApplicationDbContext context)
+        public BookingsController(IBookingService bookingService)
         {
-            _context = context;
+            _bookingService = bookingService;
         }
 
-        // POST: api/bookings
-        [HttpPost]
-        public async Task<IActionResult> CreateBooking([FromBody] BookingCreateRequest request)
-        {
-            // Validate date range
-            if (request.EndDate <= request.StartDate)
-            {
-                return BadRequest(new { message = "End date must be after start date." });
-            }
-
-            // Check room availability
-            var roomUnavailable = await _context.Bookings
-                .AnyAsync(b => b.RoomId == request.RoomId &&
-                    ((request.StartDate >= b.StartDate && request.StartDate < b.EndDate) ||
-                     (request.EndDate > b.StartDate && request.EndDate <= b.EndDate)));
-
-            if (roomUnavailable)
-            {
-                return BadRequest(new { message = "Room is not available for the selected dates." });
-            }
-
-            // Get user ID from the JWT token
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-            {
-                return Unauthorized();
-            }
-            var userId = int.Parse(userIdClaim.Value);
-
-            var booking = new Booking
-            {
-                RoomId = request.RoomId,
-                UserId = userId,
-                StartDate = request.StartDate,
-                EndDate = request.EndDate
-                // Set additional properties as needed
-            };
-
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
-
-            var response = new BookingResponse
-            {
-                Id = booking.Id,
-                RoomId = booking.RoomId,
-                UserId = booking.UserId,
-                StartDate = booking.StartDate,
-                EndDate = booking.EndDate
-                // Map additional properties as needed
-            };
-
-            return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id }, response);
-        }
-
-        // GET: api/bookings
+        // GET: /api/bookings
         [HttpGet]
-        public async Task<IActionResult> GetUserBookings()
+        [Authorize(Roles = "Administrator,Registered User")]
+        public ActionResult<IEnumerable<Booking>> GetAllBookings()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
             {
-                return Unauthorized();
+                return Unauthorized(new { message = "Invalid user ID." });
             }
-            var userId = int.Parse(userIdClaim.Value);
 
-            var bookings = await _context.Bookings
-                .Where(b => b.UserId == userId)
-                .Select(b => new BookingResponse
-                {
-                    Id = b.Id,
-                    RoomId = b.RoomId,
-                    UserId = b.UserId,
-                    StartDate = b.StartDate,
-                    EndDate = b.EndDate
-                    // Map additional properties as needed
-                })
-                .ToListAsync();
+            var role = User.FindFirstValue(ClaimTypes.Role);
 
-            return Ok(bookings);
+            if (role == "Administrator")
+            {
+                var allBookings = _bookingService.GetAllBookingsForAdmin();
+                return Ok(allBookings);
+            }
+            else
+            {
+                var userBookings = _bookingService.GetAllBookingsForUser(userId);
+                return Ok(userBookings);
+            }
         }
 
-        // GET: api/bookings/{id}
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetBookingById(int id)
-        {
-            var booking = await _context.Bookings
-                .Include(b => b.Room)
-                .FirstOrDefaultAsync(b => b.Id == id);
-
-            if (booking == null)
-            {
-                return NotFound();
-            }
-
-            // Ensure the user has access to this booking
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-            {
-                return Unauthorized();
-            }
-            var userId = int.Parse(userIdClaim.Value);
-
-            if (booking.UserId != userId && !User.IsInRole("Admin"))
-            {
-                return Forbid();
-            }
-
-            var response = new BookingResponse
-            {
-                Id = booking.Id,
-                RoomId = booking.RoomId,
-                UserId = booking.UserId,
-                StartDate = booking.StartDate,
-                EndDate = booking.EndDate
-                // Map additional properties as needed
-            };
-
-            return Ok(response);
-        }
-
-        // PUT: api/bookings/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateBooking(int id, [FromBody] BookingCreateRequest request)
-        {
-            var booking = await _context.Bookings.FindAsync(id);
-            if (booking == null)
-            {
-                return NotFound();
-            }
-
-            // Ensure the user has access to update this booking
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-            {
-                return Unauthorized();
-            }
-            var userId = int.Parse(userIdClaim.Value);
-
-            if (booking.UserId != userId)
-            {
-                return Forbid();
-            }
-
-            // Validate date range
-            if (request.EndDate <= request.StartDate)
-            {
-                return BadRequest(new { message = "End date must be after start date." });
-            }
-
-            // Check room availability excluding the current booking
-            var roomUnavailable = await _context.Bookings
-                .AnyAsync(b => b.RoomId == request.RoomId && b.Id != id &&
-                    ((request.StartDate >= b.StartDate && request.StartDate < b.EndDate) ||
-                     (request.EndDate > b.StartDate && request.EndDate <= b.EndDate)));
-
-            if (roomUnavailable)
-            {
-                return BadRequest(new { message = "Room is not available for the selected dates." });
-            }
-
-            // Update booking details
-            booking.StartDate = request.StartDate;
-            booking.EndDate = request.EndDate;
-            // Update additional properties as needed
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        // DELETE: api/bookings/{id}
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteBooking(int id)
-        {
-            var booking = await _context.Bookings.FindAsync(id);
-            if (booking == null)
-            {
-                return NotFound();
-            }
-
-            // Ensure the user has access to delete this booking
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-            {
-                return Unauthorized();
-            }
-            var userId = int.Parse(userIdClaim.Value);
-
-            if (booking.UserId != userId && !User.IsInRole("Admin"))
-            {
-                return Forbid();
-            }
-
-            _context.Bookings.Remove(booking);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        // GET: api/bookings/all
+        // GET: /api/bookings/all
         [HttpGet("all")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllBookings()
+        [Authorize(Roles = "Administrator")]
+        public ActionResult<IEnumerable<Booking>> GetAllBookingsForAdmin()
         {
-            var bookings = await _context.Bookings
-                .Include(b => b.User)
-                .Include(b => b.Room)
-                .Select(b => new BookingResponse
-                {
-                    Id = b.Id,
-                    RoomId = b.RoomId,
-                    UserId = b.UserId,
-                    StartDate = b.StartDate,
-                    EndDate = b.EndDate
-                    // Map additional properties as needed
-                })
-                .ToListAsync();
+            var allBookings = _bookingService.GetAllBookingsForAdmin();
+            return Ok(allBookings);
+        }
 
-            return Ok(bookings);
+        // GET: /api/bookings/{id}
+        [HttpGet("{id}")]
+        [Authorize(Roles = "Administrator,Registered User")]
+        public ActionResult<Booking> GetBookingById(int id)
+        {
+            var booking = _bookingService.GetBookingById(id);
+            if (booking == null)
+                return NotFound(new { message = "Booking not found." });
+
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var role = User.FindFirstValue(ClaimTypes.Role);
+
+            if (role != "Administrator" && booking.UserId != userId)
+                return Forbid();
+
+            return Ok(booking);
+        }
+
+        // POST: /api/bookings
+        [HttpPost]
+        [Authorize(Roles = "Registered User")]
+        public IActionResult AddBooking([FromBody] Booking booking)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = int.Parse(User.FindFirstValue("UserId"));
+            booking.UserId = userId;
+            booking.Status = "Pending"; // Setting Status here
+
+            _bookingService.AddBooking(booking);
+            return CreatedAtAction(nameof(GetBookingById), new { id = booking.BookingId }, booking);
+        }
+
+        // PUT: /api/bookings/{id}
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Administrator,Registered User")]
+        public IActionResult UpdateBooking(int id, [FromBody] Booking booking)
+        {
+            if (id != booking.BookingId)
+                return BadRequest(new { message = "ID mismatch." });
+
+            var existingBooking = _bookingService.GetBookingById(id);
+            if (existingBooking == null)
+                return NotFound(new { message = "Booking not found." });
+
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var role = User.FindFirstValue(ClaimTypes.Role);
+
+            if (role != "Administrator" && existingBooking.UserId != userId)
+                return Forbid();
+
+            booking.UserId = existingBooking.UserId;
+
+            _bookingService.UpdateBooking(booking);
+            return NoContent();
+        }
+
+        // DELETE: /api/bookings/{id}
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Administrator,Registered User")]
+        public IActionResult DeleteBooking(int id)
+        {
+            var existingBooking = _bookingService.GetBookingById(id);
+            if (existingBooking == null)
+                return NotFound(new { message = "Booking not found." });
+
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var role = User.FindFirstValue(ClaimTypes.Role);
+
+            if (role != "Administrator" && existingBooking.UserId != userId)
+                return Forbid();
+
+            _bookingService.DeleteBooking(id);
+            return NoContent();
         }
     }
 }
