@@ -20,13 +20,13 @@ namespace RoomReservationSystem.Controllers
         public IActionResult Register([FromBody] RegisterRequest request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(new { success = false, errors = ModelState });
 
             var response = _userService.Register(request);
             if (response.Success)
-                return Ok(new { message = response.Message });
+                return Ok(new { success = true, message = response.Message });
 
-            return BadRequest(new { message = response.Message });
+            return BadRequest(new { success = false, message = response.Message });
         }
 
         // POST: /api/auth/login
@@ -34,20 +34,27 @@ namespace RoomReservationSystem.Controllers
         public IActionResult Login([FromBody] LoginRequest request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(new { success = false, errors = ModelState });
 
             var response = _userService.Authenticate(request);
             if (response == null)
-                return Unauthorized(new { message = "Invalid credentials." });
+                return Unauthorized(new { success = false, message = "Invalid credentials." });
 
-            return Ok(response);
+            // Set JWT token in cookie
+            Response.Cookies.Append("jwt", response.Token, new CookieOptions
+            {
+                HttpOnly = true,
+            });
+
+            return Ok(new { success = true, data = new { response.Username, response.Role, response.UserId } });
         }
 
         // POST: /api/auth/logout
         [HttpPost("logout")]
         public IActionResult Logout()
         {
-            return Ok(new { message = "Logout successful." });
+            // Since JWT is stateless, implement logout on client side by discarding the token
+            return Ok(new { success = true, message = "Logout successful." });
         }
     }
 }
