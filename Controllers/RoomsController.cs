@@ -23,7 +23,7 @@ namespace RoomReservationSystem.Controllers
         public ActionResult<IEnumerable<Room>> GetAllRooms()
         {
             var rooms = _roomRepository.GetAllRooms();
-            return Ok(rooms);
+            return Ok(new { list = rooms });
         }
 
         // GET: /api/rooms/{id}
@@ -35,7 +35,7 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound(new { message = "Room not found." });
 
-            return Ok(room);
+            return Ok(new { room });
         }
 
         // POST: /api/rooms
@@ -47,7 +47,7 @@ namespace RoomReservationSystem.Controllers
                 return BadRequest(ModelState);
 
             _roomRepository.AddRoom(room);
-            return CreatedAtAction(nameof(GetRoomById), new { id = room.RoomId }, room);
+            return CreatedAtAction(nameof(GetRoomById), new { id = room.RoomId }, new { room });
         }
 
         // PUT: /api/rooms/{id}

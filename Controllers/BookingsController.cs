@@ -34,12 +34,12 @@ namespace RoomReservationSystem.Controllers
             if (role == "Administrator")
             {
                 var allBookings = _bookingService.GetAllBookingsForAdmin();
-                return Ok(allBookings);
+                return Ok(new { list = allBookings });
             }
             else
             {
                 var userBookings = _bookingService.GetAllBookingsForUser(userId);
-                return Ok(userBookings);
+                return Ok(new { list = userBookings });
             }
         }
 
@@ -49,7 +49,7 @@ namespace RoomReservationSystem.Controllers
         public ActionResult<IEnumerable<Booking>> GetAllBookingsForAdmin()
         {
             var allBookings = _bookingService.GetAllBookingsForAdmin();
-            return Ok(allBookings);
+            return Ok(new { list = allBookings });
         }
 
         // GET: /api/bookings/{id}
@@ -72,7 +72,7 @@ namespace RoomReservationSystem.Controllers
             if (role != "Administrator" && booking.UserId != userId)
                 return Forbid();
 
-            return Ok(booking);
+            return Ok(new { booking });
         }
 
         // POST: /api/bookings
@@ -83,12 +83,17 @@ namespace RoomReservationSystem.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var userId = int.Parse(User.FindFirstValue("UserId"));
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
             booking.UserId = userId;
-            booking.Status = "Pending"; // Setting Status here
+            booking.Status = "Pending";
 
             _bookingService.AddBooking(booking);
-            return CreatedAtAction(nameof(GetBookingById), new { id = booking.BookingId }, booking);
+            return CreatedAtAction(nameof(GetBookingById), new { id = booking.BookingId }, new { booking });
         }
 
         // PUT: /api/bookings/{id}

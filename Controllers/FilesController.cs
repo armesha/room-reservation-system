@@ -63,7 +63,7 @@ namespace RoomReservationSystem.Controllers
             };
 
             _fileService.UploadFile(fileModel);
-            return Ok(new { message = "File uploaded successfully." });
+            return Ok(new { file = fileModel });
         }
 
         // GET: /api/files/{id}

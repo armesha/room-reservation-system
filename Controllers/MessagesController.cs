@@ -37,12 +37,12 @@ namespace RoomReservationSystem.Controllers
             if (role == "Administrator")
             {
                 var allMessages = _messageService.GetAllMessages();
-                return Ok(allMessages);
+                return Ok(new { list = allMessages });
             }
             else
             {
                 var messages = _messageService.GetMessagesForUser(userId);
-                return Ok(messages);
+                return Ok(new { list = messages });
             }
         }
 
@@ -73,7 +73,7 @@ namespace RoomReservationSystem.Controllers
             };
 
             _messageService.SendMessage(message);
-            return Ok(new { message = "Message sent successfully." });
+            return Ok(new { message });
         }
     }
 }
