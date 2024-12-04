@@ -1,10 +1,13 @@
+// Controllers/UsersController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomReservationSystem.Models;
+using RoomReservationSystem.Models.Auth;
 using RoomReservationSystem.Repositories;
-using Oracle.ManagedDataAccess.Client;
+using RoomReservationSystem.Services;
 using System.Collections.Generic;
 using System.Linq;
+using Oracle.ManagedDataAccess.Client;
 
 namespace RoomReservationSystem.Controllers
 {
@@ -15,18 +18,21 @@ namespace RoomReservationSystem.Controllers
     {
         private readonly IUserRepository _userRepository;
         private readonly IRoleRepository _roleRepository;
+        private readonly IUserService _userService;
 
-        public UsersController(IUserRepository userRepository, IRoleRepository roleRepository)
+        public UsersController(IUserRepository userRepository, IRoleRepository roleRepository, IUserService userService)
         {
             _userRepository = userRepository;
             _roleRepository = roleRepository;
+            _userService = userService;
         }
 
         // GET: /api/users
         [HttpGet]
-        public ActionResult<IEnumerable<UserResponse>> GetAllUsers()
+        public ActionResult<IEnumerable<UserResponse>> GetAllUsers([FromQuery] UserFilterParameters parameters)
         {
-            var users = _userRepository.GetAllUsers();
+            var users = _userRepository.GetPaginatedUsers(parameters);
+            var totalCount = _userRepository.GetTotalUsersCount();
             var roles = _roleRepository.GetAllRoles();
 
             var userResponses = from user in users
@@ -40,7 +46,12 @@ namespace RoomReservationSystem.Controllers
                                     RegistrationDate = user.RegistrationDate
                                 };
 
-            return Ok(new { list = userResponses });
+            return Ok(new { 
+                list = userResponses,
+                totalCount = totalCount,
+                offset = parameters.Offset,
+                count = parameters.Count
+            });
         }
 
         // GET: /api/users/{id}
@@ -92,6 +103,40 @@ namespace RoomReservationSystem.Controllers
             return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, new { user = userResponse });
         }
 
+        // POST: /api/users/create
+        [HttpPost("create")]
+        [Authorize(Roles = "Administrator")]
+        public IActionResult CreateUser([FromBody] AdminUserCreateRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var response = _userService.AdminCreateUser(request);
+            if (response.Success)
+            {
+                var user = _userRepository.GetUserByUsername(request.Username);
+                if (user == null)
+                    return BadRequest(new { message = "User creation failed." });
+
+                var role = _roleRepository.GetRoleById(user.RoleId);
+                if (role == null)
+                    return BadRequest(new { message = "User role not found." });
+
+                var userResponse = new UserResponse
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Email = user.Email,
+                    Role = role.RoleName,
+                    RegistrationDate = user.RegistrationDate
+                };
+
+                return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, new { user = userResponse });
+            }
+
+            return BadRequest(new { message = response.Message });
+        }
+
         // PUT: /api/users/{id}
         [HttpPut("{id}")]
         public IActionResult UpdateUser(int id, [FromBody] UserUpdateRequest request)
@@ -105,15 +150,7 @@ namespace RoomReservationSystem.Controllers
 
             existingUser.Username = request.Username;
             existingUser.Email = request.Email;
-
-            if (!string.IsNullOrEmpty(request.RoleName))
-            {
-                var role = _roleRepository.GetRoleByName(request.RoleName);
-                if (role == null)
-                    return BadRequest(new { message = "Invalid role name." });
-
-                existingUser.RoleId = role.RoleId;
-            }
+            existingUser.RoleName = request.RoleName;  // Set RoleName, which will be used to get RoleId
 
             _userRepository.UpdateUser(existingUser);
 

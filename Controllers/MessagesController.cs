@@ -75,5 +75,73 @@ namespace RoomReservationSystem.Controllers
             _messageService.SendMessage(message);
             return Ok(new { message });
         }
+
+        // GET: /api/messages/notifications
+        [HttpGet("notifications")]
+        public ActionResult<IEnumerable<Message>> GetNotifications()
+        {
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var notifications = _messageService.GetNotificationsForUser(userId);
+            return Ok(new { list = notifications });
+        }
+
+        // DELETE: /api/messages/notifications/{id}
+        [HttpDelete("notifications/{id}")]
+        public IActionResult DeleteNotification(int id)
+        {
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var notification = _messageService.GetMessageById(id);
+            if (notification == null)
+                return NotFound(new { message = "Notification not found." });
+
+            if (notification.ReceiverId != userId)
+                return Forbid();
+
+            if (notification.SenderId != null)
+                return BadRequest(new { message = "This is not a notification." });
+
+            _messageService.DeleteMessage(id);
+            return Ok();
+        }
+
+        // DELETE: /api/messages/notifications
+        [HttpDelete("notifications")]
+        public IActionResult DeleteAllNotifications()
+        {
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            _messageService.DeleteAllNotifications(userId);
+            return Ok();
+        }
+
+        // Utility method for creating system notifications
+        private Message CreateNotification(int receiverId, string subject, string body)
+        {
+            var notification = new Message
+            {
+                SenderId = null,
+                ReceiverId = receiverId,
+                Subject = subject,
+                Body = body,
+                SentAt = DateTime.UtcNow
+            };
+
+            _messageService.SendMessage(notification);
+            return notification;
+        }
     }
 }
