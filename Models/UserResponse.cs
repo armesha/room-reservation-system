@@ -1,3 +1,4 @@
+// Models/UserResponse.cs
 namespace RoomReservationSystem.Models
 {
     public class UserResponse
