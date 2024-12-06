@@ -1,4 +1,3 @@
-// Repositories/UserRepository.cs
 using Oracle.ManagedDataAccess.Client;
 using RoomReservationSystem.Data;
 using RoomReservationSystem.Models;

@@ -1,4 +1,3 @@
-// Utilities/JwtTokenGenerator.cs
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using RoomReservationSystem.Models.Auth;
@@ -26,7 +25,7 @@ namespace RoomReservationSystem.Utilities
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim("UserId", user.UserId.ToString()), // Added UserId claim
+                    new Claim("UserId", user.UserId.ToString()), 
                     new Claim(ClaimTypes.Name, user.Username),
                     new Claim(ClaimTypes.Role, user.Role)
                 }),
