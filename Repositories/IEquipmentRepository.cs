@@ -7,6 +7,9 @@ namespace RoomReservationSystem.Repositories
     {
         IEnumerable<Equipment> GetAllEquipment();
         Equipment GetEquipmentById(int id);
+        Equipment CreateEquipment(Equipment equipment);
+        Equipment UpdateEquipment(Equipment equipment);
+        void DeleteEquipment(int id);
         IEnumerable<Equipment> GetEquipmentByRoomId(int roomId);
         void AddEquipmentToRoom(int roomId, int equipmentId);
         void RemoveEquipmentFromRoom(int roomId, int equipmentId);

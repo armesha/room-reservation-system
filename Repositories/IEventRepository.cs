@@ -1,4 +1,4 @@
-// Repositories/IEventRepository.cs
+
 using RoomReservationSystem.Models;
 using System.Collections.Generic;
 

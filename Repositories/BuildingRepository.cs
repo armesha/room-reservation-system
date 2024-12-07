@@ -26,7 +26,7 @@ namespace RoomReservationSystem.Repositories
 
                 // Get total count first
                 var countSql = "SELECT COUNT(*) FROM buildings WHERE 1=1";
-                var sql = "SELECT building_id, building_name, address, description, image FROM buildings WHERE 1=1";
+                var sql = "SELECT building_id, building_name, address, description, id_file FROM buildings WHERE 1=1";
 
                 if (!string.IsNullOrEmpty(filterParams.BuildingName))
                 {
@@ -92,7 +92,7 @@ namespace RoomReservationSystem.Repositories
                                 BuildingName = reader["building_name"].ToString(),
                                 Address = reader["address"].ToString(),
                                 Description = reader["description"]?.ToString(),
-                                Image = reader["image"] as byte[]
+                                IdFile = reader.IsDBNull(reader.GetOrdinal("id_file")) ? null : (int?)reader.GetInt32(reader.GetOrdinal("id_file"))
                             };
                             buildings.Add(building);
                         }
@@ -109,7 +109,7 @@ namespace RoomReservationSystem.Repositories
             using (var connection = _connectionFactory.CreateConnection())
             {
                 connection.Open();
-                string query = "SELECT building_id, building_name, address, description, image FROM buildings WHERE building_id = :id";
+                string query = "SELECT building_id, building_name, address, description, id_file FROM buildings WHERE building_id = :id";
 
                 using (var command = new OracleCommand(query, connection))
                 {
@@ -125,7 +125,7 @@ namespace RoomReservationSystem.Repositories
                                 BuildingName = reader.GetString(1),
                                 Address = reader.GetString(2),
                                 Description = reader.IsDBNull(3) ? null : reader.GetString(3),
-                                Image = reader.IsDBNull(4) ? null : (byte[])reader["image"]
+                                IdFile = reader.IsDBNull(4) ? null : (int?)reader.GetInt32(4)
                             };
                         }
                     }
@@ -139,8 +139,8 @@ namespace RoomReservationSystem.Repositories
             using (var connection = _connectionFactory.CreateConnection())
             {
                 connection.Open();
-                string query = @"INSERT INTO buildings (building_id, building_name, address, description, image)
-                                 VALUES (seq_buildings.NEXTVAL, :buildingName, :address, :description, :image)
+                string query = @"INSERT INTO buildings (building_id, building_name, address, description, id_file)
+                                 VALUES (seq_buildings.NEXTVAL, :buildingName, :address, :description, :idFile)
                                  RETURNING building_id INTO :buildingId";
 
                 using (var command = new OracleCommand(query, connection))
@@ -148,7 +148,7 @@ namespace RoomReservationSystem.Repositories
                     command.Parameters.Add(new OracleParameter("buildingName", building.BuildingName));
                     command.Parameters.Add(new OracleParameter("address", building.Address));
                     command.Parameters.Add(new OracleParameter("description", (object)building.Description ?? DBNull.Value));
-                    command.Parameters.Add(new OracleParameter("image", building.Image != null ? (object)building.Image : DBNull.Value));
+                    command.Parameters.Add(new OracleParameter("idFile", building.IdFile.HasValue ? (object)building.IdFile.Value : DBNull.Value));
 
                     var buildingIdParam = new OracleParameter("buildingId", OracleDbType.Int32)
                     {
@@ -173,7 +173,7 @@ namespace RoomReservationSystem.Repositories
                                  SET building_name = :buildingName,
                                      address = :address,
                                      description = :description,
-                                     image = :image
+                                     id_file = :idFile
                                  WHERE building_id = :buildingId";
 
                 using (var command = new OracleCommand(query, connection))
@@ -181,7 +181,7 @@ namespace RoomReservationSystem.Repositories
                     command.Parameters.Add(new OracleParameter("buildingName", building.BuildingName));
                     command.Parameters.Add(new OracleParameter("address", building.Address));
                     command.Parameters.Add(new OracleParameter("description", (object)building.Description ?? DBNull.Value));
-                    command.Parameters.Add(new OracleParameter("image", building.Image != null ? (object)building.Image : DBNull.Value));
+                    command.Parameters.Add(new OracleParameter("idFile", building.IdFile.HasValue ? (object)building.IdFile.Value : DBNull.Value));
                     command.Parameters.Add(new OracleParameter("buildingId", building.BuildingId));
 
                     command.ExecuteNonQuery();

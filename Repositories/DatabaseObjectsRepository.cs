@@ -209,14 +209,18 @@ namespace RoomReservationSystem.Repositories
                 await connection.OpenAsync();
                 using var command = connection.CreateCommand();
                 
+                // Получаем список параметров в правильном порядке
                 var columns = await GetTableColumnsAsync(tableName);
                 var paramList = new List<string>();
                 
+                // Получаем список параметров процедуры
                 var procedureName = $"edit_{tableName.ToLower()}";
                 var procParams = await GetProcedureParametersAsync(connection, procedureName);
                 
+                // Формируем список параметров для SQL запроса
                 foreach (var column in columns)
                 {
+                    // Пропускаем колонки, которых нет в процедуре
                     var paramName = $"p_{column.ColumnName.ToLower()}";
                     if (!procParams.Contains(paramName))
                     {
@@ -229,9 +233,11 @@ namespace RoomReservationSystem.Repositories
                     var param = command.CreateParameter();
                     param.ParameterName = paramName;
                     
+                    // Ищем значение без учета регистра
                     var columnNameLower = column.ColumnName.ToLower();
                     var value = data.FirstOrDefault(x => x.Key.ToLower() == columnNameLower).Value;
 
+                    // Устанавливаем тип и значение параметра
                     param.OracleDbType = GetOracleType(column.DataType);
                     if (param.OracleDbType == OracleDbType.Varchar2 || param.OracleDbType == OracleDbType.Char)
                     {
@@ -252,6 +258,7 @@ namespace RoomReservationSystem.Repositories
                     Console.WriteLine($"Parameter: {paramName}, Value: {value}, Type: {column.DataType}");
                 }
 
+                // Добавляем выходной параметр
                 var resultParamName = ":p_result";
                 paramList.Add(resultParamName);
                 var resultParam = command.CreateParameter();
@@ -261,6 +268,7 @@ namespace RoomReservationSystem.Repositories
                 resultParam.Size = 4000;
                 command.Parameters.Add(resultParam);
 
+                // Формируем SQL запрос без BEGIN/END блока
                 command.CommandType = CommandType.StoredProcedure;
                 command.CommandText = procedureName;
                 Console.WriteLine($"Executing procedure: {command.CommandText}");

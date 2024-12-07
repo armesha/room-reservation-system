@@ -1,4 +1,3 @@
-// Repositories/IMessageRepository.cs
 using RoomReservationSystem.Models;
 using System.Collections.Generic;
 

@@ -43,7 +43,7 @@ namespace RoomReservationSystem.Repositories
         {
             using var connection = _dbConnectionFactory.CreateConnection();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT EQUIPMENT_ID, EQUIPMENT_NAME FROM EQUIPMENT WHERE EQUIPMENT_ID = :equipment_id";
+            command.CommandText = "SELECT EQUIPMENT_ID, EQUIPMENT_NAME, DESCRIPTION FROM EQUIPMENT WHERE EQUIPMENT_ID = :equipment_id";
             command.CommandType = CommandType.Text;
 
             command.Parameters.Add(new OracleParameter("equipment_id", OracleDbType.Int32) { Value = id });
@@ -56,7 +56,7 @@ namespace RoomReservationSystem.Repositories
                 {
                     EquipmentId = Convert.ToInt32(reader["EQUIPMENT_ID"]),
                     Name = reader["EQUIPMENT_NAME"].ToString(),
-                    Description = null 
+                    Description = reader["DESCRIPTION"] == DBNull.Value ? null : reader["DESCRIPTION"].ToString()
                 };
             }
 
@@ -130,6 +130,7 @@ namespace RoomReservationSystem.Repositories
 
             try
             {
+                // Удаляем все текущее оборудование комнаты
                 using (var deleteCommand = connection.CreateCommand())
                 {
                     deleteCommand.Transaction = transaction;
@@ -138,6 +139,7 @@ namespace RoomReservationSystem.Repositories
                     deleteCommand.ExecuteNonQuery();
                 }
 
+                // Добавляем новое оборудование
                 if (equipmentIds != null && equipmentIds.Any())
                 {
                     using var insertCommand = connection.CreateCommand();
@@ -179,6 +181,71 @@ namespace RoomReservationSystem.Repositories
 
             connection.Open();
             return Convert.ToInt32(command.ExecuteScalar()) > 0;
+        }
+
+        public Equipment UpdateEquipment(Equipment equipment)
+        {
+            if (GetEquipmentById(equipment.EquipmentId) == null)
+            {
+                throw new KeyNotFoundException($"Equipment with ID {equipment.EquipmentId} not found");
+            }
+
+            using var connection = _dbConnectionFactory.CreateConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"UPDATE EQUIPMENT 
+                                  SET EQUIPMENT_NAME = :name,
+                                      DESCRIPTION = :description 
+                                  WHERE EQUIPMENT_ID = :id";
+            command.CommandType = CommandType.Text;
+
+            command.Parameters.Add(new OracleParameter("name", OracleDbType.Varchar2) { Value = equipment.Name });
+            command.Parameters.Add(new OracleParameter("description", OracleDbType.Varchar2) { Value = (object)equipment.Description ?? DBNull.Value });
+            command.Parameters.Add(new OracleParameter("id", OracleDbType.Int32) { Value = equipment.EquipmentId });
+
+            connection.Open();
+            var rowsAffected = command.ExecuteNonQuery();
+            
+            if (rowsAffected == 0)
+            {
+                throw new KeyNotFoundException($"Equipment with ID {equipment.EquipmentId} not found");
+            }
+
+            return GetEquipmentById(equipment.EquipmentId);
+        }
+
+        public Equipment CreateEquipment(Equipment equipment)
+        {
+            using var connection = _dbConnectionFactory.CreateConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = @"INSERT INTO EQUIPMENT 
+                                  (EQUIPMENT_ID, EQUIPMENT_NAME, DESCRIPTION) 
+                                  VALUES (seq_equipment.NEXTVAL, :name, :description) 
+                                  RETURNING EQUIPMENT_ID INTO :id";
+            command.CommandType = CommandType.Text;
+
+            var idParameter = new OracleParameter("id", OracleDbType.Int32) { Direction = ParameterDirection.Output };
+            command.Parameters.Add(new OracleParameter("name", OracleDbType.Varchar2) { Value = equipment.Name });
+            command.Parameters.Add(new OracleParameter("description", OracleDbType.Varchar2) { Value = (object)equipment.Description ?? DBNull.Value });
+            command.Parameters.Add(idParameter);
+
+            connection.Open();
+            command.ExecuteNonQuery();
+
+            equipment.EquipmentId = Convert.ToInt32(idParameter.Value.ToString());
+            return equipment;
+        }
+
+        public void DeleteEquipment(int id)
+        {
+            using var connection = _dbConnectionFactory.CreateConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM EQUIPMENT WHERE EQUIPMENT_ID = :id";
+            command.CommandType = CommandType.Text;
+
+            command.Parameters.Add(new OracleParameter("id", OracleDbType.Int32) { Value = id });
+
+            connection.Open();
+            command.ExecuteNonQuery();
         }
     }
 }

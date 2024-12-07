@@ -29,8 +29,8 @@ namespace RoomReservationSystem.Repositories
                 using var command = connection.CreateCommand();
                 command.Transaction = transaction;
                 command.CommandText = @"
-                    INSERT INTO rooms (room_id, building_id, room_number, capacity, description, image, price) 
-                    VALUES (seq_rooms.NEXTVAL, :building_id, :room_number, :capacity, :description, :image, :price) 
+                    INSERT INTO rooms (room_id, building_id, room_number, capacity, description, id_file, price) 
+                    VALUES (seq_rooms.NEXTVAL, :building_id, :room_number, :capacity, :description, :id_file, :price) 
                     RETURNING room_id INTO :room_id";
                 
                 command.CommandType = CommandType.Text;
@@ -42,7 +42,7 @@ namespace RoomReservationSystem.Repositories
                 command.Parameters.Add(new OracleParameter("room_number", OracleDbType.Varchar2) { Value = room.RoomNumber });
                 command.Parameters.Add(new OracleParameter("capacity", OracleDbType.Int32) { Value = room.Capacity });
                 command.Parameters.Add(new OracleParameter("description", OracleDbType.Varchar2) { Value = room.Description ?? string.Empty });
-                command.Parameters.Add(new OracleParameter("image", OracleDbType.Blob) { Value = room.Image ?? new byte[0] });
+                command.Parameters.Add(new OracleParameter("id_file", OracleDbType.Int32) { Value = room.IdFile.HasValue ? (object)room.IdFile.Value : DBNull.Value });
                 command.Parameters.Add(new OracleParameter("price", OracleDbType.Decimal) { Value = room.Price });
                 command.Parameters.Add(roomIdParam);
 
@@ -288,12 +288,12 @@ namespace RoomReservationSystem.Repositories
                 command.Transaction = transaction;
                 command.CommandText = @"
                     UPDATE rooms 
-                    SET building_id = :building_id, 
-                        room_number = :room_number, 
-                        capacity = :capacity, 
-                        description = :description, 
-                        image = :image, 
-                        price = :price 
+                    SET building_id = :building_id,
+                        room_number = :room_number,
+                        capacity = :capacity,
+                        description = :description,
+                        id_file = :id_file,
+                        price = :price
                     WHERE room_id = :room_id";
                 
                 command.CommandType = CommandType.Text;
@@ -302,7 +302,7 @@ namespace RoomReservationSystem.Repositories
                 command.Parameters.Add(new OracleParameter("room_number", OracleDbType.Varchar2) { Value = room.RoomNumber });
                 command.Parameters.Add(new OracleParameter("capacity", OracleDbType.Int32) { Value = room.Capacity });
                 command.Parameters.Add(new OracleParameter("description", OracleDbType.Varchar2) { Value = room.Description ?? string.Empty });
-                command.Parameters.Add(new OracleParameter("image", OracleDbType.Blob) { Value = room.Image ?? new byte[0] });
+                command.Parameters.Add(new OracleParameter("id_file", OracleDbType.Int32) { Value = room.IdFile.HasValue ? (object)room.IdFile.Value : DBNull.Value });
                 command.Parameters.Add(new OracleParameter("price", OracleDbType.Decimal) { Value = room.Price });
                 command.Parameters.Add(new OracleParameter("room_id", OracleDbType.Int32) { Value = room.RoomId });
 
@@ -474,13 +474,12 @@ namespace RoomReservationSystem.Repositories
             return equipment;
         }
 
-        public byte[] GetRoomImage(int roomId)
+        public int? GetRoomIdFile(int roomId)
         {
             using var connection = _dbConnectionFactory.CreateConnection();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT image FROM rooms WHERE room_id = :room_id";
+            command.CommandText = "SELECT id_file FROM rooms WHERE room_id = :room_id";
             command.CommandType = CommandType.Text;
-            command.InitialLOBFetchSize = -1;
 
             command.Parameters.Add(new OracleParameter("room_id", OracleDbType.Int32) { Value = roomId });
 
@@ -488,7 +487,7 @@ namespace RoomReservationSystem.Repositories
             using var reader = command.ExecuteReader();
             if (reader.Read())
             {
-                return reader["image"] as byte[];
+                return reader.IsDBNull(reader.GetOrdinal("id_file")) ? null : (int?)reader.GetInt32(reader.GetOrdinal("id_file"));
             }
 
             return null;
@@ -537,18 +536,9 @@ namespace RoomReservationSystem.Repositories
                 RoomNumber = reader["room_number"].ToString(),
                 Capacity = Convert.ToInt32(reader["capacity"]),
                 Description = reader["description"].ToString(),
-                Price = Convert.ToDecimal(reader["price"])
+                Price = Convert.ToDecimal(reader["price"]),
+                IdFile = reader.IsDBNull(reader.GetOrdinal("id_file")) ? null : (int?)reader.GetInt32(reader.GetOrdinal("id_file"))
             };
-
-            if (!reader.IsDBNull(reader.GetOrdinal("image")))
-            {
-                var blob = reader.GetOracleBlob(reader.GetOrdinal("image"));
-                if (blob != null && blob.Length > 0)
-                {
-                    room.Image = new byte[blob.Length];
-                    blob.Read(room.Image, 0, (int)blob.Length);
-                }
-            }
 
             // Get equipment for the room
             room.Equipment = GetEquipmentForRoom(room.RoomId);
