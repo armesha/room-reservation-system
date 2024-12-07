@@ -1,4 +1,3 @@
-// Models/MessageCreateRequest.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomReservationSystem.Models

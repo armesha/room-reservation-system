@@ -1,4 +1,3 @@
-// Controllers/EventsController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomReservationSystem.Models;
@@ -29,7 +28,7 @@ namespace RoomReservationSystem.Controllers
             var events = _eventService.GetAllEvents();
             var now = DateTime.UtcNow;
 
-            
+            // Фильтрация событий
             if (!showAll)
             {
                 events = events.Where(e => e.EventDate >= now);
@@ -41,7 +40,7 @@ namespace RoomReservationSystem.Controllers
                 events = events.Where(e => e.EventDate >= oneMonthAgo);
             }
 
-            
+            // Общее количество событий после фильтрации
             var totalCount = events.Count();
 
             // Если пользователь не авторизован, скрываем некоторые поля
@@ -56,7 +55,7 @@ namespace RoomReservationSystem.Controllers
                 });
             }
 
-            
+            // Применяем пагинацию
             var pagedEvents = events
                 .Skip(offset ?? 0)
                 .Take(limit ?? 10)
@@ -164,7 +163,7 @@ namespace RoomReservationSystem.Controllers
 
             _eventService.UpdateEvent(eventEntity);
             
-            
+            // Получаем и возвращаем обновленное событие
             var updatedEvent = _eventService.GetEventById(id);
             return Ok(new { eventEntity = updatedEvent });
         }

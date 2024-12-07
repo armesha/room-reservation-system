@@ -7,7 +7,6 @@ using System.IO;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-// Alias for the custom File model
 using FileModel = RoomReservationSystem.Models.File;
 
 namespace RoomReservationSystem.Controllers

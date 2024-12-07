@@ -1,4 +1,3 @@
-// Repositories/IDatabaseObjectsRepository.cs
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

@@ -136,7 +136,7 @@ namespace RoomReservationSystem.Controllers
             }
 
             booking.UserId = userId;
-            booking.Status = "Pending"; // Always set status to Pending
+            booking.Status = "Pending";
 
             _bookingService.AddBooking(booking);
 

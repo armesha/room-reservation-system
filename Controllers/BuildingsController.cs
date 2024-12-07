@@ -28,10 +28,9 @@ namespace RoomReservationSystem.Controllers
             [FromQuery] string? sortBy = null,
             [FromQuery] bool isDescending = false)
         {
-            
             if (!User.Identity.IsAuthenticated && pageSize > 10)
             {
-                pageSize = 10; 
+                pageSize = 10;
             }
 
             var filterParams = new BuildingFilterParameters
