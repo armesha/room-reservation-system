@@ -73,9 +73,12 @@ namespace RoomReservationSystem.Repositories
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = @"
-                SELECT user_id, username, password_hash, email, role_id, registration_date 
-                FROM users 
-                WHERE user_id = :user_id";
+                SELECT u.user_id, u.username, u.password_hash, u.email, u.role_id, r.role_name, 
+                       u.registration_date, u.name, u.surname, u.phone, u.code
+                FROM users u
+                JOIN roles r ON u.role_id = r.role_id
+                WHERE u.user_id = :user_id";
+
             command.Parameters.Add(new OracleParameter("user_id", OracleDbType.Int32) { Value = userId });
 
             using var reader = command.ExecuteReader();
@@ -88,7 +91,12 @@ namespace RoomReservationSystem.Repositories
                     PasswordHash = reader["password_hash"].ToString(),
                     Email = reader["email"].ToString(),
                     RoleId = Convert.ToInt32(reader["role_id"]),
-                    RegistrationDate = Convert.ToDateTime(reader["registration_date"])
+                    RoleName = reader["role_name"].ToString(),
+                    RegistrationDate = Convert.ToDateTime(reader["registration_date"]),
+                    Name = reader["name"] == DBNull.Value ? null : reader["name"].ToString(),
+                    Surname = reader["surname"] == DBNull.Value ? null : reader["surname"].ToString(),
+                    Phone = reader["phone"] == DBNull.Value ? null : reader["phone"].ToString(),
+                    Code = reader["code"] == DBNull.Value ? null : reader["code"].ToString()
                 };
             }
             return null;
@@ -127,16 +135,18 @@ namespace RoomReservationSystem.Repositories
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = @"
-                SELECT user_id, username, password_hash, email, role_id, registration_date 
+                SELECT u.*, r.role_name
                 FROM (
                     SELECT a.*, ROWNUM rnum
                     FROM (
-                        SELECT *
-                        FROM users
-                        ORDER BY user_id
+                        SELECT u.user_id, u.username, u.password_hash, u.email, u.role_id, 
+                               u.registration_date, u.name, u.surname, u.phone, u.code
+                        FROM users u
+                        ORDER BY u.user_id
                     ) a
                     WHERE ROWNUM <= :end_row
-                )
+                ) u
+                JOIN roles r ON u.role_id = r.role_id
                 WHERE rnum > :start_row";
 
             command.Parameters.Add(new OracleParameter("end_row", OracleDbType.Int32) { Value = parameters.Offset + parameters.Count });
@@ -152,7 +162,12 @@ namespace RoomReservationSystem.Repositories
                     PasswordHash = reader["password_hash"].ToString(),
                     Email = reader["email"].ToString(),
                     RoleId = Convert.ToInt32(reader["role_id"]),
-                    RegistrationDate = Convert.ToDateTime(reader["registration_date"])
+                    RoleName = reader["role_name"].ToString(),
+                    RegistrationDate = Convert.ToDateTime(reader["registration_date"]),
+                    Name = reader["name"] == DBNull.Value ? null : reader["name"].ToString(),
+                    Surname = reader["surname"] == DBNull.Value ? null : reader["surname"].ToString(),
+                    Phone = reader["phone"] == DBNull.Value ? null : reader["phone"].ToString(),
+                    Code = reader["code"] == DBNull.Value ? null : reader["code"].ToString()
                 });
             }
             return users;
@@ -171,12 +186,21 @@ namespace RoomReservationSystem.Repositories
         {
             using var connection = _connectionFactory.CreateConnection();
             connection.Open();
+            
+            using (var seqCommand = connection.CreateCommand())
+            {
+                seqCommand.CommandText = "SELECT seq_users.NEXTVAL FROM DUAL";
+                user.UserId = Convert.ToInt32(seqCommand.ExecuteScalar());
+            }
+            
             using var command = connection.CreateCommand();
             command.CommandText = @"
                 INSERT INTO users 
                 (user_id, username, password_hash, email, role_id, registration_date) 
                 VALUES 
-                (seq_users.NEXTVAL, :username, :password_hash, :email, :role_id, :registration_date)";
+                (:user_id, :username, :password_hash, :email, :role_id, :registration_date)";
+            
+            command.Parameters.Add(new OracleParameter("user_id", OracleDbType.Int32) { Value = user.UserId });
             command.Parameters.Add(new OracleParameter("username", OracleDbType.Varchar2) { Value = user.Username });
             command.Parameters.Add(new OracleParameter("password_hash", OracleDbType.Varchar2) { Value = user.PasswordHash });
             command.Parameters.Add(new OracleParameter("email", OracleDbType.Varchar2) { Value = user.Email });
@@ -203,23 +227,64 @@ namespace RoomReservationSystem.Repositories
                 
                 var roleId = Convert.ToInt32(command.ExecuteScalar());
                 user.RoleId = roleId;
+                
+                command.Parameters.Clear();
             }
-            
-            // Now update the user
-            command.Parameters.Clear();
+
+            // Update user information
             command.CommandText = @"
                 UPDATE users 
-                SET username = :username,
-                    email = :email,
-                    role_id = :role_id
+                SET username = :username, 
+                    email = :email, 
+                    role_id = :role_id,
+                    name = :name,
+                    surname = :surname,
+                    phone = :phone,
+                    code = :code
                 WHERE user_id = :user_id";
-                    
-            command.Parameters.Add(new OracleParameter("username", OracleDbType.Varchar2) { Value = user.Username });
-            command.Parameters.Add(new OracleParameter("email", OracleDbType.Varchar2) { Value = user.Email });
+
+            command.Parameters.Add(new OracleParameter("username", OracleDbType.Varchar2) { Value = (object)user.Username ?? DBNull.Value });
+            command.Parameters.Add(new OracleParameter("email", OracleDbType.Varchar2) { Value = (object)user.Email ?? DBNull.Value });
             command.Parameters.Add(new OracleParameter("role_id", OracleDbType.Int32) { Value = user.RoleId });
+            command.Parameters.Add(new OracleParameter("name", OracleDbType.Varchar2) { Value = (object)user.Name ?? DBNull.Value });
+            command.Parameters.Add(new OracleParameter("surname", OracleDbType.Varchar2) { Value = (object)user.Surname ?? DBNull.Value });
+            command.Parameters.Add(new OracleParameter("phone", OracleDbType.Varchar2) { Value = (object)user.Phone ?? DBNull.Value });
+            command.Parameters.Add(new OracleParameter("code", OracleDbType.Varchar2) { Value = (object)user.Code ?? DBNull.Value });
             command.Parameters.Add(new OracleParameter("user_id", OracleDbType.Int32) { Value = user.UserId });
 
             command.ExecuteNonQuery();
+
+            // If code is provided, update user_country table
+            if (!string.IsNullOrEmpty(user.Code))
+            {
+                // First check if the country code exists
+                command.Parameters.Clear();
+                command.CommandText = @"
+                    SELECT COUNT(*) 
+                    FROM countries 
+                    WHERE country_code = :country_code";
+                command.Parameters.Add(new OracleParameter("country_code", OracleDbType.Varchar2) { Value = user.Code });
+                
+                var exists = Convert.ToInt32(command.ExecuteScalar()) > 0;
+                
+                if (exists)
+                {
+                    // Delete existing country for this user
+                    command.Parameters.Clear();
+                    command.CommandText = "DELETE FROM user_country WHERE user_id = :user_id";
+                    command.Parameters.Add(new OracleParameter("user_id", OracleDbType.Int32) { Value = user.UserId });
+                    command.ExecuteNonQuery();
+
+                    // Insert new country
+                    command.Parameters.Clear();
+                    command.CommandText = @"
+                        INSERT INTO user_country (user_id, country_code) 
+                        VALUES (:user_id, :country_code)";
+                    command.Parameters.Add(new OracleParameter("user_id", OracleDbType.Int32) { Value = user.UserId });
+                    command.Parameters.Add(new OracleParameter("country_code", OracleDbType.Varchar2) { Value = user.Code });
+                    command.ExecuteNonQuery();
+                }
+            }
         }
 
         public void DeleteUser(int userId)
