@@ -41,6 +41,25 @@ namespace RoomReservationSystem.Controllers
                 if (role == null)
                     return BadRequest(new { message = "User role not found." });
 
+                // Generate authentication token
+                var authResponse = _userService.Authenticate(new LoginRequest 
+                { 
+                    Username = request.Username, 
+                    Password = request.Password 
+                });
+
+                if (authResponse == null)
+                    return BadRequest(new { message = "Authentication failed after registration." });
+
+                // Set JWT token in HTTP-only cookie
+                Response.Cookies.Append("jwt_token", authResponse.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddYears(1)
+                });
+
                 var userResponse = new UserResponse
                 {
                     UserId = user.UserId,
@@ -50,7 +69,10 @@ namespace RoomReservationSystem.Controllers
                     RegistrationDate = user.RegistrationDate
                 };
 
-                return Ok(new { user = userResponse });
+                return Ok(new { 
+                    user = userResponse,
+                    token = authResponse.Token
+                });
             }
 
             return BadRequest(new { message = response.Message });

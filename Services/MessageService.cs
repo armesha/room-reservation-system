@@ -1,4 +1,3 @@
-// Services/MessageService.cs
 using RoomReservationSystem.Models;
 using RoomReservationSystem.Repositories;
 using System;
@@ -29,6 +28,26 @@ namespace RoomReservationSystem.Services
         {
             message.SentAt = DateTime.UtcNow;
             _messageRepository.AddMessage(message);
+        }
+
+        public Message GetMessageById(int messageId)
+        {
+            return _messageRepository.GetMessageById(messageId);
+        }
+
+        public IEnumerable<Message> GetNotificationsForUser(int userId)
+        {
+            return _messageRepository.GetNotificationsForUser(userId);
+        }
+
+        public void DeleteMessage(int messageId)
+        {
+            _messageRepository.DeleteMessage(messageId);
+        }
+
+        public void DeleteAllNotifications(int userId)
+        {
+            _messageRepository.DeleteAllNotifications(userId);
         }
     }
 }

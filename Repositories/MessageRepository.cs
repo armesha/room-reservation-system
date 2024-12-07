@@ -31,11 +31,11 @@ namespace RoomReservationSystem.Repositories
                 messages.Add(new Message
                 {
                     MessageId = Convert.ToInt32(reader["message_id"]),
-                    SenderId = Convert.ToInt32(reader["sender_id"]),
+                    SenderId = reader["sender_id"] != DBNull.Value ? Convert.ToInt32(reader["sender_id"]) : (int?)null,
                     ReceiverId = Convert.ToInt32(reader["receiver_id"]),
-                    Subject = reader["subject"].ToString(),
-                    Body = reader["body"].ToString(),
-                    SentAt = Convert.ToDateTime(reader["sent_at"]) // Adjusted
+                    Subject = reader["subject"]?.ToString(),
+                    Body = reader["body"]?.ToString(),
+                    SentAt = Convert.ToDateTime(reader["sent_at"])
                 });
             }
             return messages;
@@ -58,11 +58,11 @@ namespace RoomReservationSystem.Repositories
                 messages.Add(new Message
                 {
                     MessageId = Convert.ToInt32(reader["message_id"]),
-                    SenderId = Convert.ToInt32(reader["sender_id"]),
+                    SenderId = reader["sender_id"] != DBNull.Value ? Convert.ToInt32(reader["sender_id"]) : (int?)null,
                     ReceiverId = Convert.ToInt32(reader["receiver_id"]),
-                    Subject = reader["subject"].ToString(),
-                    Body = reader["body"].ToString(),
-                    SentAt = Convert.ToDateTime(reader["sent_at"]) // Adjusted
+                    Subject = reader["subject"]?.ToString(),
+                    Body = reader["body"]?.ToString(),
+                    SentAt = Convert.ToDateTime(reader["sent_at"])
                 });
             }
             return messages;
@@ -88,10 +88,10 @@ namespace RoomReservationSystem.Repositories
                 return new Message
                 {
                     MessageId = Convert.ToInt32(reader["message_id"]),
-                    SenderId = reader["sender_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["sender_id"]),
+                    SenderId = reader["sender_id"] != DBNull.Value ? Convert.ToInt32(reader["sender_id"]) : (int?)null,
                     ReceiverId = Convert.ToInt32(reader["receiver_id"]),
-                    Subject = reader["subject"].ToString(),
-                    Body = reader["body"].ToString(),
+                    Subject = reader["subject"]?.ToString(),
+                    Body = reader["body"]?.ToString(),
                     SentAt = Convert.ToDateTime(reader["sent_at"])
                 };
             }
@@ -124,8 +124,8 @@ namespace RoomReservationSystem.Repositories
                     MessageId = Convert.ToInt32(reader["message_id"]),
                     SenderId = null,
                     ReceiverId = Convert.ToInt32(reader["receiver_id"]),
-                    Subject = reader["subject"].ToString(),
-                    Body = reader["body"].ToString(),
+                    Subject = reader["subject"]?.ToString(),
+                    Body = reader["body"]?.ToString(),
                     SentAt = Convert.ToDateTime(reader["sent_at"])
                 });
             }
@@ -143,9 +143,9 @@ namespace RoomReservationSystem.Repositories
                                     (seq_messages.NEXTVAL, :sender_id, :receiver_id, :subject, :body, :sent_at)";
             command.Parameters.Add(new OracleParameter("sender_id", OracleDbType.Int32) { Value = message.SenderId.HasValue ? (object)message.SenderId.Value : DBNull.Value });
             command.Parameters.Add(new OracleParameter("receiver_id", OracleDbType.Int32) { Value = message.ReceiverId });
-            command.Parameters.Add(new OracleParameter("subject", OracleDbType.Varchar2) { Value = message.Subject });
-            command.Parameters.Add(new OracleParameter("body", OracleDbType.Varchar2) { Value = message.Body });
-            command.Parameters.Add(new OracleParameter("sent_at", OracleDbType.Date) { Value = message.SentAt }); // Adjusted
+            command.Parameters.Add(new OracleParameter("subject", OracleDbType.Varchar2) { Value = message.Subject ?? string.Empty });
+            command.Parameters.Add(new OracleParameter("body", OracleDbType.Varchar2) { Value = message.Body ?? string.Empty });
+            command.Parameters.Add(new OracleParameter("sent_at", OracleDbType.Date) { Value = message.SentAt });
 
             command.ExecuteNonQuery();
         }

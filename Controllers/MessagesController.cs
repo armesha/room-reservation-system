@@ -24,7 +24,7 @@ namespace RoomReservationSystem.Controllers
 
         // GET: /api/messages
         [HttpGet]
-        public ActionResult<IEnumerable<Message>> GetMessages()
+        public ActionResult<IEnumerable<MessageResponse>> GetMessages([FromQuery] bool? all = null)
         {
             var userIdClaim = User.FindFirstValue("UserId");
             if (!int.TryParse(userIdClaim, out int userId))
@@ -33,17 +33,38 @@ namespace RoomReservationSystem.Controllers
             }
 
             var role = User.FindFirstValue(ClaimTypes.Role);
+            var messages = (role == "Administrator" && all == true)
+                ? _messageService.GetAllMessages()
+                : _messageService.GetMessagesForUser(userId);
 
-            if (role == "Administrator")
+            // Filter out notifications (messages with null SenderId)
+            messages = messages.Where(m => m.SenderId.HasValue);
+
+            var messageResponses = messages.Select(m =>
             {
-                var allMessages = _messageService.GetAllMessages();
-                return Ok(new { list = allMessages });
-            }
-            else
-            {
-                var messages = _messageService.GetMessagesForUser(userId);
-                return Ok(new { list = messages });
-            }
+                var sender = _userRepository.GetUserById(m.SenderId.Value);
+                var receiver = _userRepository.GetUserById(m.ReceiverId);
+
+                string FormatUserInfo(string username, string name, string surname)
+                {
+                    var fullName = string.Join(" ", new[] { name, surname }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    return string.IsNullOrWhiteSpace(fullName) ? username : $"{username} ({fullName})";
+                }
+                
+                return new MessageResponse
+                {
+                    Id = m.MessageId,
+                    SenderId = m.SenderId ?? 0,
+                    ReceiverId = m.ReceiverId,
+                    Subject = m.Subject,
+                    Body = m.Body,
+                    SentAt = m.SentAt,
+                    SenderFullInfo = FormatUserInfo(sender.Username, sender.Name, sender.Surname),
+                    ReceiverFullInfo = FormatUserInfo(receiver.Username, receiver.Name, receiver.Surname)
+                };
+            });
+
+            return Ok(new { list = messageResponses });
         }
 
         // POST: /api/messages
