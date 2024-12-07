@@ -12,10 +12,12 @@ namespace RoomReservationSystem.Controllers
     public class RoomsController : ControllerBase
     {
         private readonly IRoomRepository _roomRepository;
+        private readonly IEquipmentRepository _equipmentRepository;
 
-        public RoomsController(IRoomRepository roomRepository)
+        public RoomsController(IRoomRepository roomRepository, IEquipmentRepository equipmentRepository)
         {
             _roomRepository = roomRepository;
+            _equipmentRepository = equipmentRepository;
         }
 
         [HttpGet]
@@ -31,10 +33,9 @@ namespace RoomReservationSystem.Controllers
             [FromQuery] List<int>? equipmentIds = null,
             [FromQuery] int? buildingId = null)
         {
-            
             if (!User.Identity.IsAuthenticated)
             {
-                const int maxLimit = 10; 
+                const int maxLimit = 10;
                 if (!limit.HasValue || limit.Value > maxLimit)
                 {
                     limit = maxLimit;
@@ -113,7 +114,7 @@ namespace RoomReservationSystem.Controllers
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Administrator")]
-        public IActionResult UpdateRoom(int id, [FromBody] Room room)
+        public IActionResult UpdateRoom(int id, [FromBody] RoomUpdateRequest updateRequest)
         {
             try 
             {
@@ -121,16 +122,39 @@ namespace RoomReservationSystem.Controllers
                 if (existingRoom == null)
                     return NotFound(new { message = "Room not found." });
 
-                room.RoomId = id; // Устанавливаем ID из URL
-                _roomRepository.UpdateRoom(room);
+                var room = new Room
+                {
+                    RoomId = id,
+                    BuildingId = updateRequest.BuildingId,
+                    RoomNumber = updateRequest.RoomNumber,
+                    Capacity = updateRequest.Capacity,
+                    Description = updateRequest.Description,
+                    Price = updateRequest.Price,
+                    IdFile = updateRequest.IdFile,
+                    Equipment = new List<Equipment>()
+                };
+
+                // Добавляем оборудование
+                if (updateRequest.Equipment != null && updateRequest.Equipment.Any())
+                {
+                    foreach (var equipRef in updateRequest.Equipment)
+                    {
+                        var existingEquipment = _equipmentRepository.GetEquipmentById(equipRef.EquipmentId);
+                        if (existingEquipment != null)
+                        {
+                            room.Equipment.Add(existingEquipment);
+                        }
+                    }
+                }
                 
+                _roomRepository.UpdateRoom(room);
                 
                 var updatedRoom = _roomRepository.GetRoomById(id);
                 return Ok(new { room = updatedRoom });
             }
             catch (OracleException ex) when (ex.Number == 1) // ORA-00001
             {
-                return BadRequest(new { message = $"Room number '{room.RoomNumber}' already exists in building {room.BuildingId}." });
+                return BadRequest(new { message = $"Room number '{updateRequest.RoomNumber}' already exists in building {updateRequest.BuildingId}." });
             }
         }
 

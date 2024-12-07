@@ -14,6 +14,6 @@ namespace RoomReservationSystem.Models
 
         public string Description { get; set; }
 
-        public byte[]? Image { get; set; }
+        public int? IdFile { get; set; }
     }
 }

@@ -1,4 +1,3 @@
-// Services/BuildingService.cs
 using RoomReservationSystem.Models;
 using RoomReservationSystem.Repositories;
 using System.Collections.Generic;
@@ -14,9 +13,9 @@ namespace RoomReservationSystem.Services
             _buildingRepository = buildingRepository;
         }
 
-        public IEnumerable<Building> GetAllBuildings()
+        public (IEnumerable<Building> Buildings, int TotalCount) GetAllBuildings(BuildingFilterParameters filterParams)
         {
-            return _buildingRepository.GetAllBuildings();
+            return _buildingRepository.GetAllBuildings(filterParams);
         }
 
         public Building GetBuildingById(int buildingId)

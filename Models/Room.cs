@@ -1,4 +1,3 @@
-// Models/Room.cs
 using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 
@@ -19,12 +18,11 @@ namespace RoomReservationSystem.Models
 
         public required string Description { get; set; }
 
-        // Made Image nullable by using byte[]? and removed [Required] attribute
-        public byte[]? Image { get; set; }
+        public int? IdFile { get; set; }
 
         [Required(ErrorMessage = "Price is required.")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0.")]
-        public decimal Price { get; set; } // Ensure Price property is present
+        public decimal Price { get; set; }
 
         public List<Equipment> Equipment { get; set; } = new List<Equipment>();
     }

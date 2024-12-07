@@ -26,44 +26,69 @@ namespace RoomReservationSystem.Controllers
         // POST: /api/files/upload
         [HttpPost("upload")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadFile([FromForm] IFormFile File)
+        public async Task<IActionResult> UploadFile(IFormFile file)
         {
-            Console.WriteLine("Content-Type of request: " + Request.ContentType);
-            Console.WriteLine("Total files received: " + Request.Form.Files.Count);
-
-            foreach (var file in Request.Form.Files)
+            Console.WriteLine($"Request Content-Type: {Request.ContentType}");
+            Console.WriteLine($"Files in request: {Request.Form.Files.Count}");
+            foreach (var formFile in Request.Form.Files)
             {
-                Console.WriteLine("File name: " + file.FileName);
+                Console.WriteLine($"Form file name: {formFile.Name}, Length: {formFile.Length}");
             }
 
-            if (File == null || File.Length == 0)
+            if (file == null)
             {
-                Console.WriteLine("No file uploaded.");
-                return BadRequest(new { message = "No file uploaded." });
+                Console.WriteLine("File is null");
+                return BadRequest(new { message = "No file was provided." });
             }
 
-            var userIdClaim = User.FindFirstValue("UserId");
-            if (!int.TryParse(userIdClaim, out int userId))
+            if (file.Length == 0)
             {
-                return Unauthorized(new { message = "Invalid user ID." });
+                Console.WriteLine("File length is 0");
+                return BadRequest(new { message = "File is empty." });
             }
 
-            using var memoryStream = new MemoryStream();
-            await File.CopyToAsync(memoryStream);
-
-            var fileModel = new FileModel
+            try
             {
-                UploadedBy = userId,
-                FileName = Path.GetFileName(File.FileName),
-                FileType = File.ContentType,
-                FileExtension = Path.GetExtension(File.FileName),
-                UploadDate = DateTime.UtcNow,
-                Operation = "Upload",
-                FileContent = memoryStream.ToArray()
-            };
+                using var memoryStream = new MemoryStream();
+                await file.CopyToAsync(memoryStream);
 
-            _fileService.UploadFile(fileModel);
-            return Ok(new { file = fileModel });
+                var fileModel = new FileModel
+                {
+                    FileContent = memoryStream.ToArray()
+                };
+
+                _fileService.UploadFile(fileModel);
+                Console.WriteLine($"File uploaded successfully. ID: {fileModel.FileId}");
+                return Ok(new { id_file = fileModel.FileId });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error uploading file: {ex.Message}");
+                return StatusCode(500, new { message = "Error uploading file", error = ex.Message });
+            }
+        }
+
+        // GET: /api/files
+        [HttpGet]
+        public IActionResult GetFiles([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var files = _fileService.GetFiles(page, pageSize);
+            var totalCount = _fileService.GetTotalFilesCount();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            var fileResponses = files.Select(f => new
+            {
+                id_file = f.FileId
+            });
+
+            return Ok(new
+            {
+                files = fileResponses,
+                currentPage = page,
+                pageSize = pageSize,
+                totalPages = totalPages,
+                totalCount = totalCount
+            });
         }
 
         // GET: /api/files/{id}
@@ -74,42 +99,30 @@ namespace RoomReservationSystem.Controllers
             if (file == null)
                 return NotFound(new { message = "File not found." });
 
-            var userIdClaim = User.FindFirstValue("UserId");
-            if (!int.TryParse(userIdClaim, out int userId))
+            return Ok(new
             {
-                return Unauthorized(new { message = "Invalid user ID." });
-            }
-
-            var role = User.FindFirstValue(ClaimTypes.Role);
-
-            if (role != "Administrator" && file.UploadedBy != userId)
-                return Forbid();
-
-            // Return the file as a downloadable content
-            return File(file.FileContent, file.FileType, file.FileName);
+                id_file = file.FileId,
+                image = file.FileContent
+            });
         }
 
         // DELETE: /api/files/{id}
         [HttpDelete("{id}")]
         public IActionResult DeleteFile(int id)
         {
-            var file = _fileService.GetFileById(id);
-            if (file == null)
-                return NotFound(new { message = "File not found." });
-
-            var userIdClaim = User.FindFirstValue("UserId");
-            if (!int.TryParse(userIdClaim, out int userId))
+            try
             {
-                return Unauthorized(new { message = "Invalid user ID." });
+                var file = _fileService.GetFileById(id);
+                if (file == null)
+                    return NotFound(new { message = "File not found." });
+
+                _fileService.DeleteFile(id);
+                return Ok(new { message = "File successfully deleted" });
             }
-
-            var role = User.FindFirstValue(ClaimTypes.Role);
-
-            if (role != "Administrator" && file.UploadedBy != userId)
-                return Forbid();
-
-            _fileService.DeleteFile(id);
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error deleting file", error = ex.Message });
+            }
         }
     }
 }
