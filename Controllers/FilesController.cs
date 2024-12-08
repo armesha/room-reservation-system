@@ -91,19 +91,32 @@ namespace RoomReservationSystem.Controllers
             });
         }
 
+        [HttpPost("clean-duplicates")]
+        [Authorize(Roles = "Administrator")]
+        [Route("clean-duplicates")]
+        public ActionResult<int> CleanDuplicateFiles()
+        {
+            try
+            {
+                int deletedCount = _fileService.CleanDuplicateFiles();
+                return Ok(new { deletedCount });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error cleaning duplicate files", error = ex.Message });
+            }
+        }
+
         // GET: /api/files/{id}
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public IActionResult GetFile(int id)
         {
             var file = _fileService.GetFileById(id);
             if (file == null)
                 return NotFound(new { message = "File not found." });
 
-            return Ok(new
-            {
-                id_file = file.FileId,
-                image = file.FileContent
-            });
+            return File(file.FileContent, "image/jpeg"); // You might want to store and use the actual content type
         }
 
         // DELETE: /api/files/{id}

@@ -31,29 +31,38 @@ namespace RoomReservationSystem.Controllers
 
         // GET: /api/users
         [HttpGet]
-        [Authorize(Roles = "Administrator")]
-        public ActionResult<IEnumerable<UserResponse>> GetAllUsers([FromQuery] UserFilterParameters parameters)
+        [Authorize]
+        public ActionResult<IEnumerable<object>> GetAllUsers([FromQuery] UserFilterParameters parameters)
         {
             var users = _userService.GetPaginatedUsers(parameters);
             var totalCount = _userService.GetTotalUsersCount();
-            var roles = _roleRepository.GetAllRoles();
 
-            var userResponses = from user in users
-                                join role in roles on user.RoleId equals role.RoleId
-                                select new UserResponse
-                                {
-                                    UserId = user.UserId,
-                                    Username = user.Username,
-                                    Email = user.Email,
-                                    Role = role.RoleName,
-                                    RegistrationDate = user.RegistrationDate,
-                                    Name = user.Name,
-                                    Surname = user.Surname,
-                                    Phone = user.Phone,
-                                    Country = GetCountryName(_countryRepository.GetUserCountryCode(user.UserId))
-                                };
+            // Get the current user's ID and role
+            var currentUserId = int.Parse(User.FindFirstValue("UserId"));
+            var isAdmin = User.IsInRole("Administrator");
 
-            return Ok(new { 
+            var userResponses = users.Select(user =>
+            {
+                var role = _roleRepository.GetRoleById(user.RoleId);
+                if (role == null) return null;
+
+                if (isAdmin || user.UserId == currentUserId)
+                {
+                    return AdminUserResponse.FromUser(user, role.RoleName);
+                }
+                else
+                {
+                    return new BasicUserResponse
+                    {
+                        UserId = user.UserId,
+                        Username = user.Username,
+                        Role = role.RoleName
+                    };
+                }
+            }).Where(u => u != null);
+
+            return Ok(new
+            {
                 list = userResponses,
                 totalCount = totalCount,
                 offset = parameters.Offset,
@@ -63,8 +72,8 @@ namespace RoomReservationSystem.Controllers
 
         // GET: /api/users/{id}
         [HttpGet("{id}")]
-        [Authorize(Roles = "Administrator")]
-        public ActionResult<UserResponse> GetUserById(int id)
+        [Authorize]
+        public IActionResult GetUserById(int id)
         {
             var user = _userService.GetUserById(id);
             if (user == null)
@@ -74,20 +83,27 @@ namespace RoomReservationSystem.Controllers
             if (role == null)
                 return BadRequest(new { message = "User role not found." });
 
-            var userResponse = new UserResponse
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                Email = user.Email,
-                Role = role.RoleName,
-                RegistrationDate = user.RegistrationDate,
-                Name = user.Name,
-                Surname = user.Surname,
-                Phone = user.Phone,
-                Country = GetCountryName(_countryRepository.GetUserCountryCode(user.UserId))
-            };
+            // Get the current user's ID and role
+            var currentUserId = int.Parse(User.FindFirstValue("UserId"));
+            var isAdmin = User.IsInRole("Administrator");
+            var isOwnProfile = currentUserId == id;
 
-            return Ok(new { user = userResponse });
+            object response;
+            if (isAdmin || isOwnProfile)
+            {
+                response = AdminUserResponse.FromUser(user, role.RoleName);
+            }
+            else
+            {
+                response = new BasicUserResponse
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Role = role.RoleName
+                };
+            }
+
+            return Ok(new { user = response });
         }
 
         // POST: /api/users
@@ -104,20 +120,8 @@ namespace RoomReservationSystem.Controllers
             if (role == null)
                 return BadRequest(new { message = "User role not found." });
 
-            var userResponse = new UserResponse
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                Email = user.Email,
-                Role = role.RoleName,
-                RegistrationDate = user.RegistrationDate,
-                Name = user.Name,
-                Surname = user.Surname,
-                Phone = user.Phone,
-                Country = GetCountryName(_countryRepository.GetUserCountryCode(user.UserId))
-            };
-
-            return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, new { user = userResponse });
+            var response = AdminUserResponse.FromUser(user, role.RoleName);
+            return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, new { user = response });
         }
 
         // POST: /api/users/create
@@ -139,19 +143,7 @@ namespace RoomReservationSystem.Controllers
                 if (role == null)
                     return BadRequest(new { message = "User role not found." });
 
-                var userResponse = new UserResponse
-                {
-                    UserId = user.UserId,
-                    Username = user.Username,
-                    Email = user.Email,
-                    Role = role.RoleName,
-                    RegistrationDate = user.RegistrationDate,
-                    Name = user.Name,
-                    Surname = user.Surname,
-                    Phone = user.Phone,
-                    Country = GetCountryName(_countryRepository.GetUserCountryCode(user.UserId))
-                };
-
+                var userResponse = AdminUserResponse.FromUser(user, role.RoleName);
                 return CreatedAtAction(nameof(GetUserById), new { id = user.UserId }, new { user = userResponse });
             }
 
@@ -161,7 +153,7 @@ namespace RoomReservationSystem.Controllers
         // GET: /api/users/me
         [HttpGet("me")]
         [Authorize]
-        public ActionResult<User> GetCurrentUser()
+        public ActionResult<object> GetCurrentUser()
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
             if (!int.TryParse(userIdClaim, out int userId))
@@ -170,13 +162,36 @@ namespace RoomReservationSystem.Controllers
             }
 
             var user = _userService.GetUserById(userId);
-            return user == null ? NotFound() : Ok(user);
+            if (user == null)
+                return NotFound();
+
+            var role = _roleRepository.GetRoleById(user.RoleId);
+            if (role == null)
+                return BadRequest(new { message = "User role not found." });
+
+            var isAdmin = User.IsInRole("Administrator");
+            object response;
+            if (isAdmin)
+            {
+                response = AdminUserResponse.FromUser(user, role.RoleName);
+            }
+            else
+            {
+                response = new BasicUserResponse
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Role = role.RoleName
+                };
+            }
+
+            return Ok(new { user = response });
         }
 
         // PUT: /api/users/{id}
         [HttpPut("{id}")]
         [Authorize(Roles = "Administrator")]
-        public ActionResult<UserResponse> UpdateUser(int id, [FromBody] UpdateUserRequest request)
+        public ActionResult<object> UpdateUser(int id, [FromBody] UpdateUserRequest request)
         {
             var existingUser = _userService.GetUserById(id);
             if (existingUser == null)
@@ -187,19 +202,7 @@ namespace RoomReservationSystem.Controllers
                 return StatusCode(500, new { message = "Failed to update user." });
 
             var role = _roleRepository.GetRoleById(updatedUser.RoleId);
-            var userResponse = new UserResponse
-            {
-                UserId = updatedUser.UserId,
-                Username = updatedUser.Username,
-                Email = updatedUser.Email,
-                Role = role != null ? role.RoleName : "Unknown",
-                RegistrationDate = updatedUser.RegistrationDate,
-                Name = updatedUser.Name,
-                Surname = updatedUser.Surname,
-                Phone = updatedUser.Phone,
-                Country = GetCountryName(updatedUser.Code)
-            };
-
+            var userResponse = AdminUserResponse.FromUser(updatedUser, role.RoleName);
             return Ok(new { user = userResponse });
         }
 
@@ -254,19 +257,7 @@ namespace RoomReservationSystem.Controllers
                 _userService.DeleteUser(id);
 
                 var role = _roleRepository.GetRoleById(user.RoleId);
-                var userResponse = new UserResponse
-                {
-                    UserId = user.UserId,
-                    Username = user.Username,
-                    Email = user.Email,
-                    Role = role != null ? role.RoleName : "Unknown",
-                    RegistrationDate = user.RegistrationDate,
-                    Name = user.Name,
-                    Surname = user.Surname,
-                    Phone = user.Phone,
-                    Country = GetCountryName(_countryRepository.GetUserCountryCode(user.UserId))
-                };
-
+                var userResponse = AdminUserResponse.FromUser(user, role.RoleName);
                 return Ok(new { message = "User deleted successfully.", user = userResponse });
             }
             catch (OracleException ex) when (ex.Number == 2292)

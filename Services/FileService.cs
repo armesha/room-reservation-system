@@ -1,9 +1,7 @@
-// Services/FileService.cs
 using RoomReservationSystem.Models;
 using RoomReservationSystem.Repositories;
 using System.Collections.Generic;
 
-// Alias for the custom File model
 using FileModel = RoomReservationSystem.Models.File;
 
 namespace RoomReservationSystem.Services
@@ -15,6 +13,16 @@ namespace RoomReservationSystem.Services
         public FileService(IFileRepository fileRepository)
         {
             _fileRepository = fileRepository;
+        }
+
+        public IEnumerable<FileModel> GetFiles(int page, int pageSize)
+        {
+            return _fileRepository.GetFiles(page, pageSize);
+        }
+
+        public int GetTotalFilesCount()
+        {
+            return _fileRepository.GetTotalFilesCount();
         }
 
         public IEnumerable<FileModel> GetAllFilesForUser(int userId)
@@ -35,6 +43,11 @@ namespace RoomReservationSystem.Services
         public void DeleteFile(int fileId)
         {
             _fileRepository.DeleteFile(fileId);
+        }
+
+        public int CleanDuplicateFiles()
+        {
+            return _fileRepository.CleanDuplicateFiles();
         }
     }
 }

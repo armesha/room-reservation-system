@@ -12,15 +12,13 @@ namespace RoomReservationSystem.Services
         private readonly IUserRepository _userRepository;
         private readonly IRoleRepository _roleRepository;
         private readonly JwtTokenGenerator _tokenGenerator;
-        private readonly SystemNotificationService _notificationService;
 
         public UserService(IUserRepository userRepository, IRoleRepository roleRepository, 
-            JwtTokenGenerator tokenGenerator, SystemNotificationService notificationService)
+            JwtTokenGenerator tokenGenerator)
         {
             _userRepository = userRepository;
             _roleRepository = roleRepository;
             _tokenGenerator = tokenGenerator;
-            _notificationService = notificationService;
         }
 
         public RegisterResponse Register(RegisterRequest request)
@@ -60,9 +58,6 @@ namespace RoomReservationSystem.Services
             };
 
             _userRepository.AddUser(user);
-
-            // Send welcome notification
-            _notificationService.SendWelcomeMessage(user.UserId, user.Username);
 
             // Generate token for the new user
             var loginResponse = new LoginResponse
@@ -120,7 +115,8 @@ namespace RoomReservationSystem.Services
             if (user == null)
                 return null;
 
-            if (!PasswordHasher.VerifyPassword(request.Password, user.PasswordHash))
+            // Skip password verification for emulation requests
+            if (!request.IsEmulation && !PasswordHasher.VerifyPassword(request.Password, user.PasswordHash))
                 return null;
 
             var role = _roleRepository.GetRoleById(user.RoleId);
@@ -131,18 +127,12 @@ namespace RoomReservationSystem.Services
             {
                 Username = user.Username,
                 Role = role.RoleName,
-                UserId = user.UserId // Populate UserId
+                UserId = user.UserId,
+                IsEmulated = request.IsEmulation
             };
 
             // Generate JWT Token
             loginResponse.Token = _tokenGenerator.GenerateToken(loginResponse);
-
-            // Send login notification
-            _notificationService.NotifyNewLogin(
-                user.UserId,
-                "System Location", // You might want to get this from the request
-                "Web Browser" // You might want to get this from the request headers
-            );
 
             return loginResponse;
         }

@@ -13,5 +13,6 @@ namespace RoomReservationSystem.Repositories
         FileModel GetFileById(int fileId);
         void AddFile(FileModel file);
         void DeleteFile(int fileId);
+        int CleanDuplicateFiles();
     }
 }

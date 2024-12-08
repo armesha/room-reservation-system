@@ -26,18 +26,15 @@ namespace RoomReservationSystem.Repositories
             connection.Open();
             using var command = connection.CreateCommand();
             
-            // Упрощенный запрос без пагинации для отладки
             command.CommandText = "SELECT ID_FILE FROM FILES ORDER BY ID_FILE DESC";
 
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
                 var fileId = Convert.ToInt32(reader["ID_FILE"]);
-                Console.WriteLine($"Found file with ID: {fileId}"); // Логирование
                 files.Add(new FileModel { FileId = fileId });
             }
 
-            Console.WriteLine($"Total files found: {files.Count}"); // Логирование
             return files;
         }
 
@@ -48,7 +45,6 @@ namespace RoomReservationSystem.Repositories
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM FILES";
             var count = Convert.ToInt32(command.ExecuteScalar());
-            Console.WriteLine($"Total count from database: {count}"); // Логирование
             return count;
         }
 
@@ -118,7 +114,6 @@ namespace RoomReservationSystem.Repositories
 
                 command.ExecuteNonQuery();
                 
-                // Правильное преобразование OracleDecimal в int
                 if (idParam.Value != null && idParam.Value != DBNull.Value)
                 {
                     var oracleDecimal = (Oracle.ManagedDataAccess.Types.OracleDecimal)idParam.Value;
@@ -139,10 +134,39 @@ namespace RoomReservationSystem.Repositories
             using var connection = _connectionFactory.CreateConnection();
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = @"DELETE FROM FILES WHERE ID_FILE = :file_id";
+            command.CommandText = "DELETE FROM FILES WHERE ID_FILE = :file_id";
             command.Parameters.Add(new OracleParameter("file_id", OracleDbType.Int32) { Value = fileId });
-
             command.ExecuteNonQuery();
+        }
+
+        public int CleanDuplicateFiles()
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            connection.Open();
+            using var command = connection.CreateCommand();
+            
+            command.CommandText = @"
+                DECLARE
+                    v_result NUMBER;
+                BEGIN
+                    v_result := CLEAN_DUPLICATE_FILES();
+                    :result := v_result;
+                END;";
+            
+            var resultParam = new OracleParameter("result", OracleDbType.Decimal)
+            {
+                Direction = ParameterDirection.Output
+            };
+            command.Parameters.Add(resultParam);
+            
+            command.ExecuteNonQuery();
+            
+            if (resultParam.Value != null && resultParam.Value != DBNull.Value)
+            {
+                var oracleDecimal = (Oracle.ManagedDataAccess.Types.OracleDecimal)resultParam.Value;
+                return (int)oracleDecimal.Value;
+            }
+            return 0;
         }
     }
 }

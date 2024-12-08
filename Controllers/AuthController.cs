@@ -16,6 +16,10 @@ namespace RoomReservationSystem.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IRoleRepository _roleRepository;
 
+        private const string JWT_COOKIE_NAME = "jwt_token";
+        private const string EMULATION_COOKIE_NAME = "jwt_emulation_token";
+        private const string ORIGINAL_TOKEN_COOKIE_NAME = "jwt_original_token";
+
         public AuthController(IUserService userService, IUserRepository userRepository, IRoleRepository roleRepository)
         {
             _userService = userService;
@@ -60,13 +64,11 @@ namespace RoomReservationSystem.Controllers
                     Expires = DateTime.UtcNow.AddYears(1)
                 });
 
-                var userResponse = new UserResponse
+                var userResponse = new BasicUserResponse
                 {
                     UserId = user.UserId,
                     Username = user.Username,
-                    Email = user.Email,
-                    Role = role.RoleName,
-                    RegistrationDate = user.RegistrationDate
+                    Role = role.RoleName
                 };
 
                 return Ok(new { 
@@ -137,13 +139,11 @@ namespace RoomReservationSystem.Controllers
             }
 
             // Prepare the UserResponse object
-            var userResponse = new UserResponse
+            var userResponse = new BasicUserResponse
             {
                 UserId = user.UserId,
                 Username = user.Username,
-                Email = user.Email,
-                Role = role.RoleName,
-                RegistrationDate = user.RegistrationDate
+                Role = role.RoleName
             };
 
             // Return the logout success message along with user information
@@ -151,6 +151,85 @@ namespace RoomReservationSystem.Controllers
             {
                 message = "Logout successful.",
                 user = userResponse
+            });
+        }
+
+        // POST: /api/auth/emulate/{userId}
+        [HttpPost("emulate/{userId}")]
+        [Authorize(Policy = "Administrator")]
+        public IActionResult StartEmulation(int userId)
+        {
+            // Get the target user
+            var targetUser = _userRepository.GetUserById(userId);
+            if (targetUser == null)
+                return NotFound(new { message = "User not found" });
+
+            // Get current admin's token - first check if we already have an original token stored
+            var originalToken = Request.Cookies[ORIGINAL_TOKEN_COOKIE_NAME] ?? Request.Cookies[JWT_COOKIE_NAME];
+            if (string.IsNullOrEmpty(originalToken))
+                return Unauthorized(new { message = "No authentication token found" });
+
+            // Generate new token for emulated user
+            var emulationResponse = _userService.Authenticate(new LoginRequest 
+            { 
+                Username = targetUser.Username,
+                IsEmulation = true
+            });
+
+            if (emulationResponse == null)
+                return BadRequest(new { message = "Failed to generate emulation token" });
+
+            // Store original admin token if not already stored
+            if (Request.Cookies[ORIGINAL_TOKEN_COOKIE_NAME] == null)
+            {
+                Response.Cookies.Append(ORIGINAL_TOKEN_COOKIE_NAME, originalToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddHours(24)
+                });
+            }
+
+            // Set emulation token
+            Response.Cookies.Append(JWT_COOKIE_NAME, emulationResponse.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddHours(24)
+            });
+
+            return Ok(new { 
+                message = $"Now emulating user: {targetUser.Username}",
+                token = emulationResponse.Token
+            });
+        }
+
+        // POST: /api/auth/stop-emulation
+        [HttpPost("stop-emulation")]
+        [Authorize]
+        public IActionResult StopEmulation()
+        {
+            var originalToken = Request.Cookies[ORIGINAL_TOKEN_COOKIE_NAME];
+            if (string.IsNullOrEmpty(originalToken))
+                return BadRequest(new { message = "No emulation is currently active" });
+
+            // Restore original token
+            Response.Cookies.Append(JWT_COOKIE_NAME, originalToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddYears(1)
+            });
+
+            // Remove emulation cookies
+            Response.Cookies.Delete(ORIGINAL_TOKEN_COOKIE_NAME);
+
+            return Ok(new { 
+                message = "Emulation stopped, returned to original user",
+                token = originalToken
             });
         }
 
@@ -177,16 +256,9 @@ namespace RoomReservationSystem.Controllers
                 return BadRequest(new { message = "User role not found." });
             }
 
-            var userResponse = new UserResponse
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                Email = user.Email,
-                Role = role.RoleName,
-                RegistrationDate = user.RegistrationDate
-            };
-
-            return Ok(new { user = userResponse });
+            // Viewing own profile always shows full information
+            var response = AdminUserResponse.FromUser(user, role.RoleName);
+            return Ok(new { user = response });
         }
     }
 }

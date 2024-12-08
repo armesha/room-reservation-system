@@ -16,6 +16,9 @@ builder.Services.AddControllers();
 // Register DbConnectionFactory
 builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 
+// Register Data Access
+builder.Services.AddScoped<IConnectionFactory, OracleConnectionFactory>();
+
 // Register Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
@@ -27,6 +30,13 @@ builder.Services.AddScoped<IDatabaseObjectsRepository, DatabaseObjectsRepository
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>(); // Added Equipment Repository
+builder.Services.AddScoped<ICountryRepository, CountryRepository>();
+builder.Services.AddScoped<ILogRepository, LogRepository>(provider => 
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("OracleDb");
+    return new LogRepository(connectionString);
+});
 
 // Register Services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -36,7 +46,6 @@ builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IDatabaseObjectsService, DatabaseObjectsService>();
 builder.Services.AddScoped<IBuildingService, BuildingService>();
 builder.Services.AddScoped<IEventService, EventService>();
-builder.Services.AddScoped<SystemNotificationService>();
 // Add other services as needed
 builder.Services.AddSingleton<JwtTokenGenerator>();
 
