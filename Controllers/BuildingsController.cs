@@ -28,9 +28,10 @@ namespace RoomReservationSystem.Controllers
             [FromQuery] string? sortBy = null,
             [FromQuery] bool isDescending = false)
         {
+            // Для неавторизованных пользователей устанавливаем лимит
             if (!User.Identity.IsAuthenticated && pageSize > 10)
             {
-                pageSize = 10;
+                pageSize = 10; // Максимальное количество зданий для публичного доступа
             }
 
             var filterParams = new BuildingFilterParameters

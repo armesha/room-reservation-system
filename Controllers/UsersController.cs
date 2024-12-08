@@ -4,40 +4,38 @@ using RoomReservationSystem.Models;
 using RoomReservationSystem.Models.Auth;
 using RoomReservationSystem.Repositories;
 using RoomReservationSystem.Services;
+using Oracle.ManagedDataAccess.Client;
 using System.Collections.Generic;
 using System.Linq;
-using Oracle.ManagedDataAccess.Client;
+using System.Security.Claims;
 
 namespace RoomReservationSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Administrator")]
     public class UsersController : ControllerBase
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IRoleRepository _roleRepository;
         private readonly IUserService _userService;
+        private readonly IRoleRepository _roleRepository;
         private readonly ICountryRepository _countryRepository;
 
         public UsersController(
-            IUserRepository userRepository, 
-            IRoleRepository roleRepository, 
             IUserService userService,
+            IRoleRepository roleRepository,
             ICountryRepository countryRepository)
         {
-            _userRepository = userRepository;
-            _roleRepository = roleRepository;
             _userService = userService;
+            _roleRepository = roleRepository;
             _countryRepository = countryRepository;
         }
 
         // GET: /api/users
         [HttpGet]
+        [Authorize(Roles = "Administrator")]
         public ActionResult<IEnumerable<UserResponse>> GetAllUsers([FromQuery] UserFilterParameters parameters)
         {
-            var users = _userRepository.GetPaginatedUsers(parameters);
-            var totalCount = _userRepository.GetTotalUsersCount();
+            var users = _userService.GetPaginatedUsers(parameters);
+            var totalCount = _userService.GetTotalUsersCount();
             var roles = _roleRepository.GetAllRoles();
 
             var userResponses = from user in users
@@ -65,9 +63,10 @@ namespace RoomReservationSystem.Controllers
 
         // GET: /api/users/{id}
         [HttpGet("{id}")]
+        [Authorize(Roles = "Administrator")]
         public ActionResult<UserResponse> GetUserById(int id)
         {
-            var user = _userRepository.GetUserById(id);
+            var user = _userService.GetUserById(id);
             if (user == null)
                 return NotFound(new { message = "User not found." });
 
@@ -93,12 +92,13 @@ namespace RoomReservationSystem.Controllers
 
         // POST: /api/users
         [HttpPost]
+        [Authorize(Roles = "Administrator")]
         public IActionResult AddUser([FromBody] User user)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            _userRepository.AddUser(user);
+            _userService.AddUser(user);
 
             var role = _roleRepository.GetRoleById(user.RoleId);
             if (role == null)
@@ -131,7 +131,7 @@ namespace RoomReservationSystem.Controllers
             var response = _userService.AdminCreateUser(request);
             if (response.Success)
             {
-                var user = _userRepository.GetUserByUsername(request.Username);
+                var user = _userService.GetUserByUsername(request.Username);
                 if (user == null)
                     return BadRequest(new { message = "User creation failed." });
 
@@ -158,50 +158,35 @@ namespace RoomReservationSystem.Controllers
             return BadRequest(new { message = response.Message });
         }
 
+        // GET: /api/users/me
+        [HttpGet("me")]
+        [Authorize]
+        public ActionResult<User> GetCurrentUser()
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var user = _userService.GetUserById(userId);
+            return user == null ? NotFound() : Ok(user);
+        }
+
         // PUT: /api/users/{id}
         [HttpPut("{id}")]
-        public IActionResult UpdateUser(int id, [FromBody] UserUpdateRequest request)
+        [Authorize(Roles = "Administrator")]
+        public ActionResult<UserResponse> UpdateUser(int id, [FromBody] UpdateUserRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var existingUser = _userRepository.GetUserById(id);
+            var existingUser = _userService.GetUserById(id);
             if (existingUser == null)
                 return NotFound(new { message = "User not found." });
 
-            // Update user fields if they are provided
-            if (request.Username != null)
-                existingUser.Username = request.Username;
-            if (request.Email != null)
-                existingUser.Email = request.Email;
-            if (request.RoleName != null)
-                existingUser.RoleName = request.RoleName;
-            if (request.Name != null)
-                existingUser.Name = request.Name;
-            if (request.Surname != null)
-                existingUser.Surname = request.Surname;
-            if (request.Phone != null)
-                existingUser.Phone = request.Phone;
-            
-            // Update country if provided
-            if (request.Code != null)
-            {
-                if (!string.IsNullOrEmpty(request.Code))
-                {
-                    var country = _countryRepository.GetCountryByCode(request.Code);
-                    if (country == null)
-                        return BadRequest(new { message = "Invalid country code." });
-                }
-                _countryRepository.SetUserCountry(id, request.Code);
-            }
+            var updatedUser = _userService.UpdateUser(id, request);
+            if (updatedUser == null)
+                return StatusCode(500, new { message = "Failed to update user." });
 
-            // Update user in database
-            _userRepository.UpdateUser(existingUser);
-
-            // Get updated user
-            var updatedUser = _userRepository.GetUserById(id);
             var role = _roleRepository.GetRoleById(updatedUser.RoleId);
-
             var userResponse = new UserResponse
             {
                 UserId = updatedUser.UserId,
@@ -212,17 +197,34 @@ namespace RoomReservationSystem.Controllers
                 Name = updatedUser.Name,
                 Surname = updatedUser.Surname,
                 Phone = updatedUser.Phone,
-                Country = GetCountryName(_countryRepository.GetUserCountryCode(updatedUser.UserId))
+                Country = GetCountryName(updatedUser.Code)
             };
 
             return Ok(new { user = userResponse });
         }
 
+        // PUT: /api/users/me/password
+        [HttpPut("me/password")]
+        [Authorize]
+        public ActionResult ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var success = _userService.ChangePassword(userId, request.CurrentPassword, request.NewPassword);
+            return success ? Ok(new { message = "Password changed successfully." }) 
+                          : BadRequest(new { message = "Failed to change password. Please check your current password." });
+        }
+
         // PUT: /api/users/{id}/country
         [HttpPut("{id}/country")]
+        [Authorize(Roles = "Administrator")]
         public IActionResult UpdateUserCountry(int id, [FromBody] string countryCode)
         {
-            var user = _userRepository.GetUserById(id);
+            var user = _userService.GetUserById(id);
             if (user == null)
                 return NotFound(new { message = "User not found." });
 
@@ -240,15 +242,16 @@ namespace RoomReservationSystem.Controllers
 
         // DELETE: /api/users/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Administrator")]
         public IActionResult DeleteUser(int id)
         {
-            var user = _userRepository.GetUserById(id);
+            var user = _userService.GetUserById(id);
             if (user == null)
                 return NotFound(new { message = "User not found." });
 
             try
             {
-                _userRepository.DeleteUser(id);
+                _userService.DeleteUser(id);
 
                 var role = _roleRepository.GetRoleById(user.RoleId);
                 var userResponse = new UserResponse
@@ -282,7 +285,7 @@ namespace RoomReservationSystem.Controllers
         {
             if (string.IsNullOrEmpty(countryCode))
                 return null;
-            
+
             var country = _countryRepository.GetCountryByCode(countryCode);
             return country?.CountryName;
         }

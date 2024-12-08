@@ -1,3 +1,4 @@
+// Controllers/DatabaseObjectsController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomReservationSystem.Services;
