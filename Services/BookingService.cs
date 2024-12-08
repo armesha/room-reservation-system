@@ -1,4 +1,3 @@
-// Services/BookingService.cs
 using RoomReservationSystem.Models;
 using RoomReservationSystem.Repositories;
 using System.Collections.Generic;
@@ -8,20 +7,28 @@ namespace RoomReservationSystem.Services
     public class BookingService : IBookingService
     {
         private readonly IBookingRepository _bookingRepository;
+        private readonly IRoomRepository _roomRepository;
 
-        public BookingService(IBookingRepository bookingRepository)
+        public BookingService(IBookingRepository bookingRepository, 
+            IRoomRepository roomRepository)
         {
             _bookingRepository = bookingRepository;
+            _roomRepository = roomRepository;
         }
 
-        public IEnumerable<Booking> GetAllBookingsForAdmin()
+        public (IEnumerable<Booking> Bookings, int TotalCount) GetAllBookingsForAdmin(int? limit = null, int? offset = null, BookingFilterParameters filters = null)
         {
-            return _bookingRepository.GetAllBookings();
+            return _bookingRepository.GetAllBookings(limit, offset, filters);
         }
 
-        public IEnumerable<Booking> GetAllBookingsForUser(int userId)
+        public (IEnumerable<Booking> Bookings, int TotalCount) GetAllBookingsForUser(int userId, int? limit = null, int? offset = null, BookingFilterParameters filters = null)
         {
-            return _bookingRepository.GetBookingsByUserId(userId);
+            if (filters == null)
+            {
+                filters = new BookingFilterParameters();
+            }
+            filters.UserId = userId;
+            return _bookingRepository.GetAllBookings(limit, offset, filters);
         }
 
         public Booking GetBookingById(int bookingId)
@@ -42,6 +49,31 @@ namespace RoomReservationSystem.Services
         public void DeleteBooking(int bookingId)
         {
             _bookingRepository.DeleteBooking(bookingId);
+        }
+
+        public IEnumerable<Invoice> GetUserInvoices(int userId)
+        {
+            return _bookingRepository.GetUserInvoices(userId);
+        }
+
+        public IEnumerable<Invoice> GetUnpaidInvoices()
+        {
+            return _bookingRepository.GetUnpaidInvoices();
+        }
+
+        public IEnumerable<Invoice> GetPaidInvoices()
+        {
+            return _bookingRepository.GetPaidInvoices();
+        }
+
+        public bool MarkInvoiceAsPaid(int invoiceId)
+        {
+            return _bookingRepository.MarkInvoiceAsPaid(invoiceId);
+        }
+
+        public async Task<IEnumerable<DailyBookingSummary>> GetDailyBookingSummaryAsync()
+        {
+            return await _bookingRepository.GetDailyBookingSummaryAsync();
         }
     }
 }

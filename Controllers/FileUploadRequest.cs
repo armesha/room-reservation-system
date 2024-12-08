@@ -1,4 +1,3 @@
-// Models/FileUploadRequest.cs
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 

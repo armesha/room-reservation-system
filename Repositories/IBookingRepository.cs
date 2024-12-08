@@ -1,4 +1,3 @@
-// Repositories/IBookingRepository.cs
 using RoomReservationSystem.Models;
 using System.Collections.Generic;
 
@@ -15,6 +14,7 @@ namespace RoomReservationSystem.Repositories
         IEnumerable<Invoice> GetUserInvoices(int userId);
         IEnumerable<Invoice> GetUnpaidInvoices();
         IEnumerable<Invoice> GetPaidInvoices();
+        Task<IEnumerable<DailyBookingSummary>> GetDailyBookingSummaryAsync();
         bool MarkInvoiceAsPaid(int invoiceId);
     }
 }

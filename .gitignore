@@ -5,6 +5,9 @@ bower_components/
 *.npm
 *.yarn
 
+#SQL (logs)
+sql/ 
+
 # Build outputs
 dist/
 build/

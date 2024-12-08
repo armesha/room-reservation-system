@@ -1,4 +1,3 @@
-// Repositories/EventRepository.cs
 using Oracle.ManagedDataAccess.Client;
 using RoomReservationSystem.Data;
 using RoomReservationSystem.Models;
@@ -102,27 +101,23 @@ namespace RoomReservationSystem.Repositories
             using var connection = _connectionFactory.CreateConnection();
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = @"INSERT INTO events (event_id, event_name, event_date, description, booking_id, created_by, created_at)
-                                  VALUES (seq_events.NEXTVAL, :event_name, :event_date, :description, :booking_id, :created_by, :created_at)
-                                  RETURNING event_id INTO :event_id";
+            command.CommandType = CommandType.StoredProcedure;
+            command.CommandText = "sp_add_event";
 
-            command.Parameters.Add(new OracleParameter("event_name", OracleDbType.Varchar2) { Value = eventEntity.EventName });
-            command.Parameters.Add(new OracleParameter("event_date", OracleDbType.Date) { Value = eventEntity.EventDate });
-            command.Parameters.Add(new OracleParameter("description", OracleDbType.Varchar2) { Value = eventEntity.Description });
-            command.Parameters.Add(new OracleParameter("booking_id", OracleDbType.Int32) { 
-                Value = eventEntity.BookingId.HasValue ? (object)eventEntity.BookingId.Value : DBNull.Value 
-            });
-            command.Parameters.Add(new OracleParameter("created_by", OracleDbType.Int32) { Value = eventEntity.CreatedBy });
-            command.Parameters.Add(new OracleParameter("created_at", OracleDbType.Date) { Value = eventEntity.CreatedAt });
+            // Input parameters
+            command.Parameters.Add(new OracleParameter("p_event_name", OracleDbType.Varchar2) { Value = eventEntity.EventName });
+            command.Parameters.Add(new OracleParameter("p_event_date", OracleDbType.Date) { Value = eventEntity.EventDate });
+            command.Parameters.Add(new OracleParameter("p_description", OracleDbType.Varchar2) { Value = (object)eventEntity.Description ?? DBNull.Value });
+            command.Parameters.Add(new OracleParameter("p_booking_id", OracleDbType.Int32) { Value = eventEntity.BookingId.HasValue ? (object)eventEntity.BookingId.Value : DBNull.Value });
+            command.Parameters.Add(new OracleParameter("p_created_by", OracleDbType.Int32) { Value = eventEntity.CreatedBy });
+            command.Parameters.Add(new OracleParameter("p_parent_event_id", OracleDbType.Int32) { Value = eventEntity.ParentEventId.HasValue ? (object)eventEntity.ParentEventId.Value : DBNull.Value });
 
-            var eventIdParam = new OracleParameter("event_id", OracleDbType.Int32);
-            eventIdParam.Direction = ParameterDirection.Output;
-            command.Parameters.Add(eventIdParam);
+            // Output parameter
+            var newEventIdParam = new OracleParameter("p_new_event_id", OracleDbType.Int32) { Direction = ParameterDirection.Output };
+            command.Parameters.Add(newEventIdParam);
 
             command.ExecuteNonQuery();
-            
-            var eventIdOracleDecimal = (Oracle.ManagedDataAccess.Types.OracleDecimal)eventIdParam.Value;
-            eventEntity.EventId = eventIdOracleDecimal.ToInt32();
+            eventEntity.EventId = Convert.ToInt32(newEventIdParam.Value);
         }
 
         public void UpdateEvent(Event eventEntity)
@@ -161,6 +156,102 @@ namespace RoomReservationSystem.Repositories
             command.Parameters.Add(new OracleParameter("event_id", OracleDbType.Int32) { Value = eventId });
 
             command.ExecuteNonQuery();
+        }
+
+        public IEnumerable<Event> GetEventHierarchy(int? parentId = null)
+        {
+            var events = new List<Event>();
+            using var connection = _connectionFactory.CreateConnection();
+            connection.Open();
+            using var command = connection.CreateCommand();
+            
+            var sql = "SELECT * FROM EventHierarchyView";
+            if (parentId.HasValue)
+            {
+                sql += " WHERE parent_event_id = :parentId";
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = ":parentId";
+                parameter.Value = parentId.Value;
+                command.Parameters.Add(parameter);
+            }
+            sql += " ORDER BY event_date";
+            command.CommandText = sql;
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                events.Add(new Event
+                {
+                    EventId = Convert.ToInt32(reader["event_id"]),
+                    EventName = reader["event_name"].ToString(),
+                    EventDate = Convert.ToDateTime(reader["event_date"]),
+                    Description = reader["description"].ToString(),
+                    BookingId = reader["booking_id"] != DBNull.Value ? Convert.ToInt32(reader["booking_id"]) : null,
+                    ParentEventId = reader["parent_event_id"] != DBNull.Value ? Convert.ToInt32(reader["parent_event_id"]) : null,
+                    CreatedBy = Convert.ToInt32(reader["created_by"]),
+                    CreatedAt = Convert.ToDateTime(reader["created_at"])
+                });
+            }
+            return events;
+        }
+
+        public IEnumerable<Event> GetUpcomingEvents()
+        {
+            var events = new List<Event>();
+            using var connection = _connectionFactory.CreateConnection();
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT * FROM UpcomingEventsView";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                events.Add(new Event
+                {
+                    EventId = Convert.ToInt32(reader["event_id"]),
+                    EventName = reader["event_name"].ToString(),
+                    EventDate = Convert.ToDateTime(reader["event_date"]),
+                    Description = reader["description"].ToString(),
+                    BookingId = reader["booking_id"] != DBNull.Value ? Convert.ToInt32(reader["booking_id"]) : null,
+                    CreatedBy = Convert.ToInt32(reader["created_by"]),
+                    EventPath = reader["event_path"].ToString()
+                });
+            }
+            return events;
+        }
+
+        public class EventBookingDetail : Event
+        {
+            public int? RoomId { get; set; }
+            public DateTime? StartTime { get; set; }
+            public DateTime? EndTime { get; set; }
+            public string Status { get; set; }
+        }
+
+        public IEnumerable<Models.EventBookingDetail> GetEventBookingDetails()
+        {
+            var events = new List<Models.EventBookingDetail>();
+            using var connection = _connectionFactory.CreateConnection();
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT * FROM EventBookingDetailsView";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                events.Add(new Models.EventBookingDetail
+                {
+                    EventId = Convert.ToInt32(reader["event_id"]),
+                    EventName = reader["event_name"].ToString(),
+                    EventDate = Convert.ToDateTime(reader["event_date"]),
+                    BookingId = reader["booking_id"] != DBNull.Value ? Convert.ToInt32(reader["booking_id"]) : null,
+                    RoomId = reader["room_id"] != DBNull.Value ? Convert.ToInt32(reader["room_id"]) : null,
+                    StartTime = reader["start_time"] != DBNull.Value ? Convert.ToDateTime(reader["start_time"]) : null,
+                    EndTime = reader["end_time"] != DBNull.Value ? Convert.ToDateTime(reader["end_time"]) : null,
+                    Status = reader["status"].ToString()
+                });
+            }
+            return events;
         }
     }
 }

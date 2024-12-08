@@ -33,10 +33,10 @@ namespace RoomReservationSystem.Controllers
             [FromQuery] List<int>? equipmentIds = null,
             [FromQuery] int? buildingId = null)
         {
-            // Для запросов без токена устанавливаем лимит
+            // For requests without a token, set a limit
             if (!User.Identity.IsAuthenticated)
             {
-                const int maxLimit = 10; // Максимальное количество комнат для публичного доступа
+                const int maxLimit = 10; // Maximum number of rooms for public access
                 if (!limit.HasValue || limit.Value > maxLimit)
                 {
                     limit = maxLimit;
@@ -141,7 +141,7 @@ namespace RoomReservationSystem.Controllers
                 if (existingRoom == null)
                     return NotFound(new { message = "Room not found." });
 
-                // Создаем объект Room для обновления
+                // Create Room object for update
                 var room = new Room
                 {
                     RoomId = id,
@@ -154,7 +154,7 @@ namespace RoomReservationSystem.Controllers
                     Equipment = new List<Equipment>()
                 };
 
-                // Добавляем оборудование
+                // Add equipment
                 if (updateRequest.Equipment != null && updateRequest.Equipment.Any())
                 {
                     foreach (var equipRef in updateRequest.Equipment)
@@ -169,7 +169,7 @@ namespace RoomReservationSystem.Controllers
                 
                 _roomRepository.UpdateRoom(room);
                 
-                // Получаем и возвращаем обновленную комнату
+                // Get and return updated room
                 var updatedRoom = _roomRepository.GetRoomById(id);
                 return Ok(new { room = updatedRoom });
             }

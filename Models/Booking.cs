@@ -27,5 +27,11 @@ namespace RoomReservationSystem.Models
         public bool HasEvent { get; set; }
 
         public string? Username { get; set; }
+
+        public string? RoomNumber { get; set; }
+
+        public int? RoomFileId { get; set; }
+
+        public Event? Event { get; set; }
     }
 }

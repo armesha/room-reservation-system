@@ -28,9 +28,6 @@ namespace RoomReservationSystem.Controllers
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadFile(IFormFile file)
         {
-            // Логируем информацию о запросе
-            Console.WriteLine($"Request Content-Type: {Request.ContentType}");
-            Console.WriteLine($"Files in request: {Request.Form.Files.Count}");
             foreach (var formFile in Request.Form.Files)
             {
                 Console.WriteLine($"Form file name: {formFile.Name}, Length: {formFile.Length}");
@@ -117,7 +114,7 @@ namespace RoomReservationSystem.Controllers
             if (file == null)
                 return NotFound(new { message = "File not found." });
 
-            return File(file.FileContent, "image/jpeg"); // You might want to store and use the actual content type
+            return File(file.FileContent, "image/jpeg");
         }
 
         // DELETE: /api/files/{id}

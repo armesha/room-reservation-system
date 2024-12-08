@@ -4,6 +4,9 @@ using RoomReservationSystem.Models;
 using RoomReservationSystem.Services;
 using System.Security.Claims;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+using System;
+using Microsoft.AspNetCore.Http;
 
 namespace RoomReservationSystem.Controllers
 {
@@ -13,11 +16,16 @@ namespace RoomReservationSystem.Controllers
     {
         private readonly IBookingService _bookingService;
         private readonly IEventService _eventService;
+        private readonly ILogger<BookingsController> _logger;
 
-        public BookingsController(IBookingService bookingService, IEventService eventService)
+        public BookingsController(
+            IBookingService bookingService, 
+            IEventService eventService,
+            ILogger<BookingsController> logger)
         {
             _bookingService = bookingService;
             _eventService = eventService;
+            _logger = logger;
         }
 
         // GET: /api/bookings
@@ -138,7 +146,7 @@ namespace RoomReservationSystem.Controllers
             }
 
             booking.UserId = userId;
-            booking.Status = "Pending"; // Always set status to Pending
+            booking.Status = "Pending";
 
             _bookingService.AddBooking(booking);
 
@@ -150,7 +158,7 @@ namespace RoomReservationSystem.Controllers
             }
             catch
             {
-                // If there's an error getting the event, we'll return null for the event
+                //
             }
 
             return CreatedAtAction(
@@ -283,6 +291,24 @@ namespace RoomReservationSystem.Controllers
                 return NotFound(new { message = "Invoice not found." });
 
             return Ok(new { success = true, message = "Invoice marked as paid successfully." });
+        }
+
+        // GET: /api/bookings/daily-summary
+        [HttpGet("daily-summary")]
+        [ProducesResponseType(typeof(IEnumerable<DailyBookingSummary>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetDailyBookingSummary()
+        {
+            try
+            {
+                var summary = await _bookingService.GetDailyBookingSummaryAsync();
+                return Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting daily booking summary");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the daily booking summary");
+            }
         }
     }
 }
