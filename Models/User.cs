@@ -11,7 +11,7 @@ namespace RoomReservationSystem.Models
         public required string Username { get; set; }
 
         [JsonIgnore]
-        public required string PasswordHash { get; set; }
+        public string PasswordHash { get; set; }
 
         [EmailAddress]
         public required string Email { get; set; }
