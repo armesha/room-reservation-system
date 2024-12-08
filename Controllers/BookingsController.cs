@@ -30,7 +30,8 @@ namespace RoomReservationSystem.Controllers
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] string status = null,
-            [FromQuery] bool? hasEvent = null)
+            [FromQuery] bool? hasEvent = null,
+            [FromQuery] bool onlyMine = false)
         {
             var userIdClaim = User.FindFirstValue("UserId");
             if (!int.TryParse(userIdClaim, out int userId))
@@ -46,7 +47,8 @@ namespace RoomReservationSystem.Controllers
                 StartDate = startDate,
                 EndDate = endDate,
                 Status = status,
-                HasEvent = hasEvent
+                HasEvent = hasEvent,
+                UserId = onlyMine ? userId : (role != "Administrator" ? userId : null)
             };
 
             // For non-authenticated users or non-admin users, set a maximum limit
@@ -59,7 +61,7 @@ namespace RoomReservationSystem.Controllers
                 }
             }
 
-            if (role == "Administrator")
+            if (role == "Administrator" && !onlyMine)
             {
                 var result = _bookingService.GetAllBookingsForAdmin(limit, offset, filters);
                 return Ok(new { list = result.Bookings, total = result.TotalCount });
@@ -136,7 +138,7 @@ namespace RoomReservationSystem.Controllers
             }
 
             booking.UserId = userId;
-            booking.Status = "Pending";
+            booking.Status = "Pending"; // Always set status to Pending
 
             _bookingService.AddBooking(booking);
 

@@ -28,6 +28,7 @@ namespace RoomReservationSystem.Controllers
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadFile(IFormFile file)
         {
+            // Логируем информацию о запросе
             Console.WriteLine($"Request Content-Type: {Request.ContentType}");
             Console.WriteLine($"Files in request: {Request.Form.Files.Count}");
             foreach (var formFile in Request.Form.Files)

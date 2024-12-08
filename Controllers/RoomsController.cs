@@ -33,9 +33,10 @@ namespace RoomReservationSystem.Controllers
             [FromQuery] List<int>? equipmentIds = null,
             [FromQuery] int? buildingId = null)
         {
+            // Для запросов без токена устанавливаем лимит
             if (!User.Identity.IsAuthenticated)
             {
-                const int maxLimit = 10;
+                const int maxLimit = 10; // Максимальное количество комнат для публичного доступа
                 if (!limit.HasValue || limit.Value > maxLimit)
                 {
                     limit = maxLimit;
@@ -101,6 +102,24 @@ namespace RoomReservationSystem.Controllers
             return Ok(timeSlots);
         }
 
+        [HttpGet("{roomId}/utilization")]
+        [AllowAnonymous]
+        public ActionResult<decimal> GetRoomUtilization(
+            int roomId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            var room = _roomRepository.GetRoomById(roomId);
+            if (room == null)
+                return NotFound(new { message = "Room not found." });
+
+            if (startDate >= endDate)
+                return BadRequest(new { message = "Start date must be before end date." });
+
+            var utilization = _roomRepository.GetRoomUtilization(roomId, startDate, endDate);
+            return Ok(new { utilization });
+        }
+
         [HttpPost]
         [Authorize(Roles = "Administrator")]
         public IActionResult AddRoom([FromBody] Room room)
@@ -122,6 +141,7 @@ namespace RoomReservationSystem.Controllers
                 if (existingRoom == null)
                     return NotFound(new { message = "Room not found." });
 
+                // Создаем объект Room для обновления
                 var room = new Room
                 {
                     RoomId = id,
@@ -149,6 +169,7 @@ namespace RoomReservationSystem.Controllers
                 
                 _roomRepository.UpdateRoom(room);
                 
+                // Получаем и возвращаем обновленную комнату
                 var updatedRoom = _roomRepository.GetRoomById(id);
                 return Ok(new { room = updatedRoom });
             }

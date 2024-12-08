@@ -106,6 +106,27 @@ namespace RoomReservationSystem.Controllers
             return Ok(new { eventEntity });
         }
 
+        // GET: api/events/my/incomplete
+        [HttpGet("my/incomplete")]
+        [Authorize(Roles = "Administrator,Registered User")]
+        public ActionResult<IEnumerable<Event>> GetMyIncompleteEvents()
+        {
+            var userIdClaim = User.FindFirstValue("UserId");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Invalid user ID." });
+            }
+
+            var events = _eventService.GetAllEvents()
+                .Where(e => e.CreatedBy == userId && e.EventDate > DateTime.UtcNow)
+                .ToList();
+
+            return Ok(new { 
+                list = events,
+                count = events.Count
+            });
+        }
+
         // POST: api/events
         [HttpPost]
         [Authorize(Roles = "Administrator,Registered User")]
