@@ -209,18 +209,18 @@ namespace RoomReservationSystem.Repositories
                 await connection.OpenAsync();
                 using var command = connection.CreateCommand();
                 
-                // Получаем список параметров в правильном порядке
+                // Get parameters list in correct order
                 var columns = await GetTableColumnsAsync(tableName);
                 var paramList = new List<string>();
                 
-                // Получаем список параметров процедуры
-                var procedureName = $"edit_{tableName.ToLower()}";
+                // Get procedure parameters list
+                var procedureName = $"edit_pkg.edit_{tableName.ToLower()}";
                 var procParams = await GetProcedureParametersAsync(connection, procedureName);
                 
-                // Формируем список параметров для SQL запроса
+                // Form parameter list for SQL query
                 foreach (var column in columns)
                 {
-                    // Пропускаем колонки, которых нет в процедуре
+                    // Skip columns that are not in the procedure
                     var paramName = $"p_{column.ColumnName.ToLower()}";
                     if (!procParams.Contains(paramName))
                     {
@@ -233,11 +233,11 @@ namespace RoomReservationSystem.Repositories
                     var param = command.CreateParameter();
                     param.ParameterName = paramName;
                     
-                    // Ищем значение без учета регистра
+                    // Search for value case-insensitively
                     var columnNameLower = column.ColumnName.ToLower();
                     var value = data.FirstOrDefault(x => x.Key.ToLower() == columnNameLower).Value;
 
-                    // Устанавливаем тип и значение параметра
+                    // Set parameter type and value
                     param.OracleDbType = GetOracleType(column.DataType);
                     if (param.OracleDbType == OracleDbType.Varchar2 || param.OracleDbType == OracleDbType.Char)
                     {
@@ -258,7 +258,7 @@ namespace RoomReservationSystem.Repositories
                     Console.WriteLine($"Parameter: {paramName}, Value: {value}, Type: {column.DataType}");
                 }
 
-                // Добавляем выходной параметр
+                // Add output parameter
                 var resultParamName = ":p_result";
                 paramList.Add(resultParamName);
                 var resultParam = command.CreateParameter();
@@ -268,7 +268,7 @@ namespace RoomReservationSystem.Repositories
                 resultParam.Size = 4000;
                 command.Parameters.Add(resultParam);
 
-                // Формируем SQL запрос без BEGIN/END блока
+                // Form SQL query without BEGIN/END block
                 command.CommandType = CommandType.StoredProcedure;
                 command.CommandText = procedureName;
                 Console.WriteLine($"Executing procedure: {command.CommandText}");
@@ -282,17 +282,29 @@ namespace RoomReservationSystem.Repositories
         {
             var parameters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             using var command = connection.CreateCommand();
+            
+            // Split package and procedure name
+            var nameParts = procedureName.Split('.');
+            var packageName = nameParts.Length > 1 ? nameParts[0] : null;
+            var procName = nameParts.Length > 1 ? nameParts[1] : procedureName;
+            
             command.CommandText = @"
                 SELECT argument_name
                 FROM user_arguments 
                 WHERE object_name = :procName
+                AND (:packageName IS NULL OR package_name = :packageName)
                 AND argument_name IS NOT NULL
                 ORDER BY position";
 
-            var param = command.CreateParameter();
-            param.ParameterName = ":procName";
-            param.Value = procedureName.ToUpper();
-            command.Parameters.Add(param);
+            var procParam = command.CreateParameter();
+            procParam.ParameterName = ":procName";
+            procParam.Value = procName.ToUpper();
+            command.Parameters.Add(procParam);
+
+            var pkgParam = command.CreateParameter();
+            pkgParam.ParameterName = ":packageName";
+            pkgParam.Value = packageName?.ToUpper() ?? (object)DBNull.Value;
+            command.Parameters.Add(pkgParam);
 
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())

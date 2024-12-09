@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using System;
 using Microsoft.AspNetCore.Http;
+using Oracle.ManagedDataAccess.Client; // Add this namespace
 
 namespace RoomReservationSystem.Controllers
 {
@@ -203,23 +204,34 @@ namespace RoomReservationSystem.Controllers
         [Authorize(Roles = "Administrator,Registered User")]
         public IActionResult DeleteBooking(int id)
         {
-            var existingBooking = _bookingService.GetBookingById(id);
-            if (existingBooking == null)
-                return NotFound(new { message = "Booking not found." });
-
-            var userIdClaim = User.FindFirstValue("UserId");
-            if (!int.TryParse(userIdClaim, out int userId))
+            try
             {
-                return Unauthorized(new { message = "Invalid user ID." });
+                var existingBooking = _bookingService.GetBookingById(id);
+                if (existingBooking == null)
+                    return NotFound(new { message = "Booking not found." });
+
+                var userIdClaim = User.FindFirstValue("UserId");
+                if (!int.TryParse(userIdClaim, out int userId))
+                {
+                    return Unauthorized(new { message = "Invalid user ID." });
+                }
+
+                var role = User.FindFirstValue(ClaimTypes.Role);
+
+                if (role != "Administrator" && existingBooking.UserId != userId)
+                    return Forbid();
+
+                _bookingService.DeleteBooking(id);
+                return Ok(new { success = true, message = "Booking deleted successfully." });
             }
-
-            var role = User.FindFirstValue(ClaimTypes.Role);
-
-            if (role != "Administrator" && existingBooking.UserId != userId)
-                return Forbid();
-
-            _bookingService.DeleteBooking(id);
-            return NoContent();
+            catch (OracleException ex)
+            {
+                if (ex.Number == 2292) // ORA-02292: integrity constraint violation
+                {
+                    return BadRequest(new { message = "Cannot delete this booking because it has associated records (events or invoices). Please delete associated records first." });
+                }
+                throw;
+            }
         }
 
         // GET: /api/bookings/admin/invoices/unpaid

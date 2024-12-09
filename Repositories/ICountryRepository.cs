@@ -9,5 +9,8 @@ namespace RoomReservationSystem.Repositories
         Country GetCountryByCode(string code);
         void SetUserCountry(int userId, string countryCode);
         string GetUserCountryCode(int userId);
+        void UpdateCountry(Country country);
+        void DeleteCountry(int id);
+        Country AddCountry(Country country);
     }
 }

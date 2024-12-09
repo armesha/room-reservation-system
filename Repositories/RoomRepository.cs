@@ -114,8 +114,9 @@ namespace RoomReservationSystem.Repositories
                 if (!string.IsNullOrEmpty(filters.Name))
                 {
                     var searchName = filters.Name.Replace("+", " ").Trim();
-                    sql += " AND (LOWER(r.room_number) LIKE LOWER(:p_name) OR LOWER(r.description) LIKE LOWER(:p_name))";
-                    parameters.Add(new OracleParameter("p_name", OracleDbType.Varchar2) { Value = $"%{searchName}%" });
+                    sql += " AND (LOWER(r.room_number) LIKE LOWER(:p_name_number) OR LOWER(r.description) LIKE LOWER(:p_name_desc))";
+                    parameters.Add(new OracleParameter("p_name_number", OracleDbType.Varchar2) { Value = $"%{searchName}%" });
+                    parameters.Add(new OracleParameter("p_name_desc", OracleDbType.Varchar2) { Value = $"%{searchName}%" });
                 }
 
                 if (filters.MinPrice.HasValue)

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Oracle.ManagedDataAccess.Client;
 using RoomReservationSystem.Models;
 using RoomReservationSystem.Services;
 using System.Collections.Generic;
@@ -28,10 +29,9 @@ namespace RoomReservationSystem.Controllers
             [FromQuery] string? sortBy = null,
             [FromQuery] bool isDescending = false)
         {
-            // Для неавторизованных пользователей устанавливаем лимит
             if (!User.Identity.IsAuthenticated && pageSize > 10)
             {
-                pageSize = 10; // Максимальное количество зданий для публичного доступа
+                pageSize = 10;
             }
 
             var filterParams = new BuildingFilterParameters
@@ -108,14 +108,25 @@ namespace RoomReservationSystem.Controllers
         [Authorize(Roles = "Administrator")]
         public IActionResult DeleteBuilding(int id)
         {
-            var existingBuilding = _buildingService.GetBuildingById(id);
-            if (existingBuilding == null)
+            try
             {
-                return NotFound(new { message = "Building not found." });
-            }
+                var building = _buildingService.GetBuildingById(id);
+                if (building == null)
+                {
+                    return NotFound(new { message = "Building not found." });
+                }
 
-            _buildingService.DeleteBuilding(id);
-            return Ok(new { success = true });
+                _buildingService.DeleteBuilding(id);
+                return Ok(new { success = true, message = "Building deleted successfully." });
+            }
+            catch (OracleException ex)
+            {
+                if (ex.Number == 2292) // ORA-02292: integrity constraint violation
+                {
+                    return BadRequest(new { message = "Cannot delete this building because it has associated rooms. Please delete all rooms in this building first." });
+                }
+                throw;
+            }
         }
     }
 }

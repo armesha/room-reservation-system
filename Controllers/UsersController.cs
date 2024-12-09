@@ -169,33 +169,28 @@ namespace RoomReservationSystem.Controllers
             if (role == null)
                 return BadRequest(new { message = "User role not found." });
 
-            var isAdmin = User.IsInRole("Administrator");
-            object response;
-            if (isAdmin)
-            {
-                response = AdminUserResponse.FromUser(user, role.RoleName);
-            }
-            else
-            {
-                response = new BasicUserResponse
-                {
-                    UserId = user.UserId,
-                    Username = user.Username,
-                    Role = role.RoleName
-                };
-            }
-
+            // Always return full data for own profile
+            var response = AdminUserResponse.FromUser(user, role.RoleName);
             return Ok(new { user = response });
         }
 
         // PUT: /api/users/{id}
         [HttpPut("{id}")]
-        [Authorize(Roles = "Administrator")]
+        [Authorize]
         public ActionResult<object> UpdateUser(int id, [FromBody] UpdateUserRequest request)
         {
             var existingUser = _userService.GetUserById(id);
             if (existingUser == null)
                 return NotFound(new { message = "User not found." });
+
+            // Check if user is admin or updating their own profile
+            var currentUserId = int.Parse(User.FindFirstValue("UserId"));
+            var isAdmin = User.IsInRole("Administrator");
+            
+            if (!isAdmin && currentUserId != id)
+            {
+                return Forbid();
+            }
 
             var updatedUser = _userService.UpdateUser(id, request);
             if (updatedUser == null)

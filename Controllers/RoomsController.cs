@@ -183,9 +183,23 @@ namespace RoomReservationSystem.Controllers
         [Authorize(Roles = "Administrator")]
         public IActionResult DeleteRoom(int id)
         {
-            var existingRoom = _roomRepository.GetRoomById(id);
-            _roomRepository.DeleteRoom(id);
-            return Ok(new { success = true, message = existingRoom != null ? "Room deleted successfully." : "Room not found but operation was successful." });
+            try
+            {
+                var existingRoom = _roomRepository.GetRoomById(id);
+                if (existingRoom == null)
+                    return NotFound(new { message = "Room not found." });
+
+                _roomRepository.DeleteRoom(id);
+                return Ok(new { success = true, message = "Room deleted successfully." });
+            }
+            catch (OracleException ex)
+            {
+                if (ex.Number == 2292) // ORA-02292: integrity constraint violation
+                {
+                    return BadRequest(new { message = "Cannot delete this room because it has active bookings or events. Please delete associated records first." });
+                }
+                throw;
+            }
         }
     }
 }
