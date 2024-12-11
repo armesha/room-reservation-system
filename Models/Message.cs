@@ -9,6 +9,6 @@ namespace RoomReservationSystem.Models
         public int ReceiverId { get; set; }
         public string Subject { get; set; }
         public string Body { get; set; }
-        public DateTime SentAt { get; set; } // Ensure consistency
+        public DateTime SentAt { get; set; } 
     }
 }

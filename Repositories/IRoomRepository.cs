@@ -1,4 +1,3 @@
-
 using RoomReservationSystem.Models;
 using System.Collections.Generic;
 using System;
@@ -18,5 +17,9 @@ namespace RoomReservationSystem.Repositories
         List<int> GetEquipmentByRoomId(int roomId);
         void AddEquipmentToRoom(int roomId, int equipmentId);
         void RemoveEquipmentFromRoom(int roomId, int equipmentId);
+        decimal GetRoomUtilization(int roomId, DateTime startDate, DateTime endDate);
+        
+        IEnumerable<OptimalRoom> FindOptimalRooms(int capacity, decimal maxPrice, string[] requiredEquipment, DateTime date);
+        IEnumerable<RoomOccupancyData> AnalyzeRoomOccupancy(int roomId, DateTime startDate, int daysAhead);
     }
 }

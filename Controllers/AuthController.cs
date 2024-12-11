@@ -95,14 +95,14 @@ namespace RoomReservationSystem.Controllers
             Response.Cookies.Append("jwt_token", response.Token, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true, // Requires HTTPS
+                Secure = true,
                 SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddYears(1) // Match the JWT expiration time
+                Expires = DateTime.UtcNow.AddYears(1)
             });
 
             return Ok(new
             {
-                token = response.Token, // Keep token in response
+                token = response.Token,
                 username = response.Username,
                 role = response.Role,
                 userId = response.UserId

@@ -130,7 +130,7 @@ namespace RoomReservationSystem.Repositories
 
             try
             {
-                // Удаляем все текущее оборудование комнаты
+                // Remove all current room equipment
                 using (var deleteCommand = connection.CreateCommand())
                 {
                     deleteCommand.Transaction = transaction;
@@ -139,7 +139,7 @@ namespace RoomReservationSystem.Repositories
                     deleteCommand.ExecuteNonQuery();
                 }
 
-                // Добавляем новое оборудование
+                // Add new equipment
                 if (equipmentIds != null && equipmentIds.Any())
                 {
                     using var insertCommand = connection.CreateCommand();

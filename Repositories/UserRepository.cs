@@ -290,39 +290,19 @@ namespace RoomReservationSystem.Repositories
         {
             using var connection = _connectionFactory.CreateConnection();
             connection.Open();
-            using var transaction = connection.BeginTransaction();
 
+            using var command = connection.CreateCommand();
+            command.CommandText = "SP_DELETE_USER";
+            command.CommandType = System.Data.CommandType.StoredProcedure;
+            command.Parameters.Add(new OracleParameter("p_user_id", OracleDbType.Int32) { Value = userId });
+            
             try
             {
-                // First, delete related logs
-                using var deleteLogsCommand = connection.CreateCommand();
-                deleteLogsCommand.Transaction = transaction;
-                deleteLogsCommand.CommandText = @"
-                    DELETE FROM logs 
-                    WHERE user_id = :user_id";
-                deleteLogsCommand.Parameters.Add(new OracleParameter("user_id", OracleDbType.Int32) { Value = userId });
-                deleteLogsCommand.ExecuteNonQuery();
-
-                // Then, delete the user
-                using var deleteUserCommand = connection.CreateCommand();
-                deleteUserCommand.Transaction = transaction;
-                deleteUserCommand.CommandText = @"
-                    DELETE FROM users 
-                    WHERE user_id = :user_id";
-                deleteUserCommand.Parameters.Add(new OracleParameter("user_id", OracleDbType.Int32) { Value = userId });
-                int rowsAffected = deleteUserCommand.ExecuteNonQuery();
-
-                if (rowsAffected == 0)
-                {
-                    throw new Exception("User not found or already deleted.");
-                }
-
-                transaction.Commit();
+                command.ExecuteNonQuery();
             }
-            catch
+            catch (Exception ex)
             {
-                transaction.Rollback();
-                throw;
+                throw new Exception($"Failed to delete user: {ex.Message}", ex);
             }
         }
     }

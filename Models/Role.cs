@@ -1,4 +1,3 @@
-// Models/Role.cs
 namespace RoomReservationSystem.Models
 {
     public class Role
