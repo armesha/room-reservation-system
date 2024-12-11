@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System;
 using System.Linq;
+using Oracle.ManagedDataAccess.Client;
 
 namespace RoomReservationSystem.Controllers
 {
@@ -28,22 +29,22 @@ namespace RoomReservationSystem.Controllers
             var events = _eventService.GetAllEvents();
             var now = DateTime.UtcNow;
 
-            // Фильтрация событий
+            // Event filtering
             if (!showAll)
             {
                 events = events.Where(e => e.EventDate >= now);
             }
             else if (!User.IsInRole("Administrator"))
             {
-                // Для не-админов показываем события не старше месяца
+                // For non-admins, show events not older than one month
                 var oneMonthAgo = now.AddMonths(-1);
                 events = events.Where(e => e.EventDate >= oneMonthAgo);
             }
 
-            // Общее количество событий после фильтрации
+            // Total number of events after filtering
             var totalCount = events.Count();
 
-            // Если пользователь не авторизован, скрываем некоторые поля
+            // If user is not authorized, hide certain fields
             if (!User.Identity.IsAuthenticated)
             {
                 events = events.Select(e => new Event
@@ -55,7 +56,7 @@ namespace RoomReservationSystem.Controllers
                 });
             }
 
-            // Применяем пагинацию
+            // Apply pagination
             var pagedEvents = events
                 .Skip(offset ?? 0)
                 .Take(limit ?? 10)
@@ -78,7 +79,7 @@ namespace RoomReservationSystem.Controllers
                 return NotFound(new { message = "Event not found." });
             }
 
-            // Если пользователь не авторизован, скрываем некоторые поля
+            // If user is not authorized, hide certain fields
             if (!User.Identity.IsAuthenticated)
             {
                 eventEntity = new Event
@@ -184,15 +185,15 @@ namespace RoomReservationSystem.Controllers
 
             _eventService.UpdateEvent(eventEntity);
             
-            // Получаем и возвращаем обновленное событие
+            // Get and return updated event
             var updatedEvent = _eventService.GetEventById(id);
             return Ok(new { eventEntity = updatedEvent });
         }
 
-        // DELETE: api/events/{id}
-        [HttpDelete("{id}")]
+        // PATCH: api/events/{id}/details
+        [HttpPatch("{id}/details")]
         [Authorize(Roles = "Administrator,Registered User")]
-        public IActionResult DeleteEvent(int id)
+        public ActionResult<Event> UpdateEventDetails(int id, [FromBody] EventDetailsUpdateDto details)
         {
             var existingEvent = _eventService.GetEventById(id);
             if (existingEvent == null)
@@ -206,14 +207,75 @@ namespace RoomReservationSystem.Controllers
                 return Unauthorized(new { message = "Invalid user ID." });
             }
 
-            var role = User.FindFirstValue(ClaimTypes.Role);
-            if (role != "Administrator" && existingEvent.CreatedBy != userId)
+            if (!User.IsInRole("Administrator") && existingEvent.CreatedBy != userId)
             {
                 return Forbid();
             }
 
-            _eventService.DeleteEvent(id);
-            return NoContent();
+            // Update only name and description
+            existingEvent.EventName = details.EventName ?? existingEvent.EventName;
+            existingEvent.Description = details.Description ?? existingEvent.Description;
+
+            _eventService.UpdateEvent(existingEvent);
+            
+            var updatedEvent = _eventService.GetEventById(id);
+            return Ok(new { eventEntity = updatedEvent });
+        }
+
+        public class EventDetailsUpdateDto
+        {
+            public string? EventName { get; set; }
+            public string? Description { get; set; }
+        }
+
+        // DELETE: api/events/{id}
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Administrator")]
+        public IActionResult DeleteEvent(int id)
+        {
+            try
+            {
+                var existingEvent = _eventService.GetEventById(id);
+                if (existingEvent == null)
+                {
+                    return NotFound(new { message = "Event not found." });
+                }
+
+                _eventService.DeleteEvent(id);
+                return Ok(new { success = true, message = "Event deleted successfully." });
+            }
+            catch (OracleException ex)
+            {
+                if (ex.Number == 2292) // ORA-02292: integrity constraint violation
+                {
+                    return BadRequest(new { message = "Cannot delete this event because it has associated bookings or other records. Please delete associated records first." });
+                }
+                throw;
+            }
+        }
+
+        // GET: api/events/hierarchy
+        [HttpGet("hierarchy")]
+        [Authorize(Roles = "Administrator")]
+        public ActionResult<IEnumerable<Event>> GetEventHierarchy([FromQuery] int? parentId = null)
+        {
+            return Ok(_eventService.GetEventHierarchy(parentId));
+        }
+
+        // GET: api/events/upcoming
+        [HttpGet("upcoming")]
+        [AllowAnonymous]
+        public ActionResult<IEnumerable<Event>> GetUpcomingEvents()
+        {
+            return Ok(_eventService.GetUpcomingEvents());
+        }
+
+        // GET: api/events/booking-details
+        [HttpGet("booking-details")]
+        [Authorize(Roles = "Administrator")]
+        public ActionResult<IEnumerable<EventBookingDetail>> GetEventBookingDetails()
+        {
+            return Ok(_eventService.GetEventBookingDetails());
         }
     }
 }

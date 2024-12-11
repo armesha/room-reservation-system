@@ -149,7 +149,6 @@ namespace RoomReservationSystem.Controllers
             return Ok();
         }
 
-        // Utility method for creating system notifications
         private Message CreateNotification(int receiverId, string subject, string body)
         {
             var notification = new Message
