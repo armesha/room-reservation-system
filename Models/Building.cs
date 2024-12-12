@@ -14,6 +14,7 @@ namespace RoomReservationSystem.Models
 
         public string Description { get; set; }
 
+        // Replace Image property with IdFile
         public int? IdFile { get; set; }
     }
 }

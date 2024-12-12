@@ -9,5 +9,10 @@ namespace RoomReservationSystem.Models.Auth
 
         [Required]
         public string Password { get; set; }
+
+        /// <summary>
+        /// Indicates if this login request is for user emulation
+        /// </summary>
+        public bool IsEmulation { get; set; }
     }
 }
